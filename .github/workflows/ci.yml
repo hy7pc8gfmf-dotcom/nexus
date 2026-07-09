@@ -5,33 +5,27 @@ on:
     branches: [master]
 
 jobs:
-  # ── Linux ──
   build-linux:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y build-essential git
       - run: cmake -B build -S . -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DCMAKE_CXX_STANDARD=20 -DFETCHCONTENT_FULLY_DISCONNECTED=ON
-      - run: cmake --build build -j $(nproc) 2>&1 | tee build.log | tail -100
-      - name: Errors
-        if: failure()
-        run: grep -E 'error:|Error:|undefined reference' build.log | head -30
-      - run: echo "BUILD OK"
+      - run: cmake --build build -j $(nproc) 2>&1 | tee build.log | tail -30
+      - if: failure()
+        run: grep -E 'error:|Error' build.log | head -20
 
-  # ── Windows ──
   build-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: microsoft/setup-msbuild@v2
 
-      - name: Configure and Build
-        shell: cmd
-        run: |
-          call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
-          where cl && cl --version
-          where ninja || choco install ninja -y --no-progress 2>&1 | tail -3
-          where cmake && cmake --version
-          cmake -B build -S . -G Ninja -DCMAKE_C_COMPILER=cl.exe -DCMAKE_CXX_COMPILER=cl.exe -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DFETCHCONTENT_FULLY_DISCONNECTED=OFF
-          cmake --build build -j
-          dir build\*.exe /s
+      - name: Configure
+        run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DFETCHCONTENT_FULLY_DISCONNECTED=OFF
+
+      - name: Build
+        run: cmake --build build --config Release -j 2>&1
+
+      - name: List
+        run: dir build\bin\Release\*.exe /b
