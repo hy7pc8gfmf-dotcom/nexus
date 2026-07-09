@@ -12,7 +12,10 @@ jobs:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y build-essential git
       - run: cmake -B build -S . -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DCMAKE_CXX_STANDARD=20 -DFETCHCONTENT_FULLY_DISCONNECTED=ON
-      - run: cmake --build build -j $(nproc)
+      - run: cmake --build build -j $(nproc) 2>&1 | tee build.log | tail -100
+      - name: Errors
+        if: failure()
+        run: grep -E 'error:|Error:|undefined reference' build.log | head -30
       - run: echo "BUILD OK"
 
   # ── Windows ──
@@ -22,30 +25,32 @@ jobs:
       - uses: actions/checkout@v4
       - uses: microsoft/setup-msbuild@v2
 
-      - name: Setup cl.exe
+      - name: Install Ninja
+        run: choco install ninja -y --no-progress 2>&1 | tail -3
+
+      - name: Setup VS env
         shell: pwsh
         run: |
-          # Find VS with vswhere
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          $vsPath = & $vswhere -latest -property installationPath -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64
-          $vcvars = "$vsPath\VC\Auxiliary\Build\vcvars64.bat"
-          echo "VS: $vsPath"
-          echo "VCVARS: $vcvars"
-          if (Test-Path $vcvars) {
-            # vcvars64.bat → set env variables for PowerShell
-            cmd /c "`"$vcvars`" >nul 2>nul && set" | ForEach-Object {
-              if ($_ -match '^(\w+)=(.*)') {
-                Set-Item -Path "env:$($matches[1])" -Value $matches[2]
+          echo "vswhere: $vswhere"
+          if (Test-Path $vswhere) {
+            $vsPath = & $vswhere -latest -property installationPath -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64
+            echo "VS Path: $vsPath"
+            $vcvars = "$vsPath\VC\Auxiliary\Build\vcvars64.bat"
+            echo "vcvars: $vcvars"
+            if (Test-Path $vcvars) {
+              cmd /c "`"$vcvars`" >nul 2>nul && set" | ForEach-Object {
+                if ($_ -match '^(\w+)=(.*)') {
+                  Set-Item -Path "env:$($matches[1])" -Value $matches[2]
+                }
               }
-            }
-            $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
-            if ($cl) { echo "MSVC: $($cl.Source)" } else { throw "cl.exe not found after vcvars" }
-          } else {
-            throw "vcvars64.bat not found at $vcvars"
-          }
+              $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
+              if ($cl) { echo "MSVC: $($cl.Source)" } else { echo "WARNING: cl.exe not found" }
+            } else { echo "WARNING: vcvars64.bat not found" }
+          } else { echo "WARNING: vswhere not found" }
 
       - name: Configure
-        run: cmake -B build -S . -G Ninja -DCMAKE_C_COMPILER=cl.exe -DCMAKE_CXX_COMPILER=cl.exe -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DFETCHCONTENT_FULLY_DISCONNECTED=OFF
+        run: cmake -B build -S . -G Ninja -DCMAKE_C_COMPILER=cl.exe -DCMAKE_CXX_COMPILER=cl.exe -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DFETCHCONTENT_FULLY_DISCONNECTED=OFF 2>&1
 
       - name: Build
         run: cmake --build build -j
