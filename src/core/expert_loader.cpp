@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <sstream>
+#include <thread>
 #include <vector>
 
 #include "llama.h"
@@ -71,6 +72,11 @@ auto ExpertLoader::load(const std::string& gguf_path,
     return Status::Error(ErrorCode::kModelLoadFailed,
       "llama_init_from_model failed");
   }
+
+  // 设置 CPU 线程数 (使用全部物理核)
+  int n_threads = std::thread::hardware_concurrency();
+  if (n_threads < 1) n_threads = 4;
+  llama_set_n_threads(h->ctx, n_threads, n_threads);
 
   // 获取词汇表
   h->vocab = llama_model_get_vocab(h->model);

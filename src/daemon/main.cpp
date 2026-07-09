@@ -248,8 +248,8 @@ static void main_loop(
       }
     }
 
-    // ── 3. 写心跳状态（每 10 周期 ≈ 30s）─────────────────
-    if (cycle % 10 == 0) {
+    // ── 3. 写心跳状态（每 20 周期 ≈ 60s）─────────────────
+    if (cycle % 20 == 0) {
       auto uptime = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::steady_clock::now() - started_at).count();
 

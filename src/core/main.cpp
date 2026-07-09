@@ -116,8 +116,9 @@ auto main(int argc, char* argv[]) -> int {
 
       nexus::core::ExpertLoader loader;
       nexus::core::InferParams params;
-      params.n_gpu_layers = -1;   // 全部 GPU
+      params.n_gpu_layers = 0;     // CPU-only
       params.n_ctx        = 8192;
+      params.n_predict    = 32;    // 快速验证: 32 tokens
 
       auto load_result = loader.load(model_path, params);
       if (load_result.ok()) {
