@@ -1,4 +1,6 @@
-add_executable(daemon main.cpp)
+add_executable(daemon
+  main.cpp
+  governor.cpp)
 target_link_libraries(daemon PRIVATE
   nexus_ipc
   nexus_types)

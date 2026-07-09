@@ -6,7 +6,8 @@ add_executable(psyche
   sophia_core.cpp
   self_evolve.cpp
   observer.cpp
-  algo_quantum.cpp)
+  algo_quantum.cpp
+  scoreboard.cpp)
 
 target_link_libraries(psyche PRIVATE nexus_ipc nexus_types)
 if(NEXUS_USE_VCPKG)

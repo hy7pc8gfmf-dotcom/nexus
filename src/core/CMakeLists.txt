@@ -20,7 +20,9 @@ add_executable(core
   expert_loader.cpp
   scheduler.cpp
   block_swapper.cpp
-  meta_kernel.cpp)
+  meta_kernel.cpp
+  experience.cpp
+  native_bridge.cpp)
 
 target_link_libraries(core PRIVATE
   nexus_ipc

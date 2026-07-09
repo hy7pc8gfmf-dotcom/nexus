@@ -1,4 +1,6 @@
-add_executable(env_checker main.cpp)
+add_executable(env_checker
+  main.cpp
+  chinese_constraint.cpp)
 target_link_libraries(env_checker PRIVATE
   nexus_ipc
   nexus_types)
