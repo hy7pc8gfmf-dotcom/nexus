@@ -19,7 +19,8 @@ add_executable(core
   vram_manager.cpp
   expert_loader.cpp
   scheduler.cpp
-  block_swapper.cpp)
+  block_swapper.cpp
+  meta_kernel.cpp)
 
 target_link_libraries(core PRIVATE
   nexus_ipc
