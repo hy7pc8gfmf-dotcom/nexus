@@ -1,4 +1,4 @@
-name: Full Validation
+name: Full System Validation
 
 on:
   push:
@@ -7,56 +7,103 @@ on:
     branches: [master]
 
 jobs:
-  # ── Linux: GCC, no CUDA ──
+  # ═══════════════════════════════════════════════════════════════
+  # JOB 1: 环境检测
+  # ═══════════════════════════════════════════════════════════════
+  diagnostics:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: System Info
+        run: |
+          echo "=== OS ===" && uname -a 2>/dev/null || ver
+          echo "=== CPU ===" && nproc 2>/dev/null || echo %NUMBER_OF_PROCESSORS%
+          echo "=== CMake ===" && cmake --version | head -1
+          echo "=== Compiler ===" && g++ --version 2>/dev/null | head -1 || cl.exe 2>&1 | head -1 || echo "no compiler found"
+
+  # ═══════════════════════════════════════════════════════════════
+  # JOB 2: Linux 完整构建 + 验证
+  # ═══════════════════════════════════════════════════════════════
   build-linux:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Install deps
+      - name: Install
         run: sudo apt-get update && sudo apt-get install -y build-essential git
-      - name: Configure
-        run: cmake -B build -S . -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DCMAKE_CXX_STANDARD=20
-      - name: Build
-        run: cmake --build build -j $(nproc) 2>&1 | tail -30
-      - name: List artifacts
-        run: find build -executable -type f 2>/dev/null | head -20 || echo "check manually"
 
-  # ── Windows: MSVC, no CUDA ──
+      - name: 1. CMake 配置
+        run: cmake -B build -S . -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DCMAKE_CXX_STANDARD=20
+      - name: 2. 编译
+        run: cmake --build build -j $(nproc) 2>&1
+      - name: 3. 检查错误
+        run: cmake --build build -j $(nproc) 2>&1 | grep -ci "error" || echo "0 errors"
+
+  # ═══════════════════════════════════════════════════════════════
+  # JOB 3: Windows MSVC 构建 (使用 VS 生成器)
+  # ═══════════════════════════════════════════════════════════════
   build-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - name: Setup MSVC
         uses: microsoft/setup-msbuild@v2
-      - name: Configure
-        run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DFETCHCONTENT_FULLY_DISCONNECTED=OFF
-      - name: Build
-        run: cmake --build build --config Release -j
-      - name: Verify EXEs
-        run: |
-          echo "=== Built EXEs ==="
-          Get-ChildItem build/bin/Release/*.exe | Select-Object Name, Length
 
-  # ── Windows: Ninja (no VS generator) ──
+      - name: 1. CMake 配置
+        run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF
+      - name: 2. 编译
+        run: cmake --build build --config Release -j 2>&1
+      - name: 3. 列出 EXE
+        run: |
+          echo "=== Built EXEs ==="; Get-ChildItem build/bin/Release/*.exe | Select-Object Name, Length
+          echo "=== Count ==="; $count = (Get-ChildItem build/bin/Release/*.exe).Count; Write-Output "Total: $count EXEs"
+
+  # ═══════════════════════════════════════════════════════════════
+  # JOB 4: Windows Ninja 构建 (备用生成器)
+  # ═══════════════════════════════════════════════════════════════
   build-windows-ninja:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Ninja
-        run: choco install ninja -y
-      - name: Setup MSVC env
+      - name: Install Ninja
+        run: choco install ninja -y --no-progress 2>&1 | tail -5
+
+      - name: 1. 配置 VS 环境
         shell: pwsh
         run: |
-          $msvc = "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC"
-          $ver = (Get-ChildItem $msvc | Select-Object -First 1).Name
-          $sdk = "C:\Program Files (x86)\Windows Kits\10"
-          $sdkVer = "10.0.22621.0"
-          echo "MSVC_ROOT=$msvc\$ver" >> $env:GITHUB_ENV
-          echo "INCLUDE=$msvc\$ver\include;$sdk\Include\$sdkVer\ucrt;$sdk\Include\$sdkVer\shared;$sdk\Include\$sdkVer\um" >> $env:GITHUB_ENV
-          echo "LIB=$msvc\$ver\lib\x64;$sdk\Lib\$sdkVer\ucrt\x64;$sdk\Lib\$sdkVer\um\x64" >> $env:GITHUB_ENV
-      - name: Configure (Ninja)
+          # GitHub Actions 上 VS 的自动检测路径
+          $vswhere = "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+          if (Test-Path $vswhere) {
+            echo "VS found at $vswhere"
+            # 直接调用 vcvars64 设置环境
+            cmd.exe /c "`"$vswhere`" && set" | ForEach-Object {
+              if ($_ -match '^(\w+)=(.*)') {
+                Set-Item -Path "env:$($matches[1])" -Value $matches[2]
+              }
+            }
+          }
+          # 验证 cl.exe
+          if (Get-Command cl.exe -ErrorAction SilentlyContinue) {
+            echo "cl.exe available"
+          } else {
+            echo "WARNING: cl.exe not found, trying alternative paths"
+            $paths = @(
+              "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.*\bin\Hostx64\x64"
+            )
+            foreach ($p in $paths) {
+              $resolved = Resolve-Path $p -ErrorAction SilentlyContinue
+              if ($resolved) {
+                echo "Adding $resolved to PATH"
+                echo "$resolved" | Out-File -FilePath $env:GITHUB_PATH -Append
+                break
+              }
+            }
+          }
+      - name: 2. CMake 配置
         run: cmake -B build -S . -G Ninja -DCMAKE_C_COMPILER=cl.exe -DCMAKE_CXX_COMPILER=cl.exe -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF
-      - name: Build
-        run: cmake --build build -j
-      - name: List EXEs
+      - name: 3. 编译
+        run: cmake --build build -j 2>&1
+      - name: 4. 列出 EXE
         run: Get-ChildItem build/*.exe -Recurse | Select-Object Name, Length
