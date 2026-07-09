@@ -114,13 +114,20 @@ endif()
 # ═══════════════════════════════════════════════════════════════════
 # 组件 EXE
 # ═══════════════════════════════════════════════════════════════════
-add_subdirectory(src/env_checker)
-add_subdirectory(src/core)
-add_subdirectory(src/algo)
-add_subdirectory(src/daemon)
-add_subdirectory(src/psyche)
-add_subdirectory(src/bridge)
-add_subdirectory(src/coordinator)
+if(WIN32)
+  # Windows: 完整构建所有组件
+  add_subdirectory(src/env_checker)
+  add_subdirectory(src/core)
+  add_subdirectory(src/algo)
+  add_subdirectory(src/daemon)
+  add_subdirectory(src/psyche)
+  add_subdirectory(src/bridge)
+  add_subdirectory(src/coordinator)
+else()
+  # Linux: 仅构建跨平台组件
+  add_subdirectory(src/env_checker)
+  add_subdirectory(src/algo)
+endif()
 
 # ═══════════════════════════════════════════════════════════════════
 # 测试
