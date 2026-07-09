@@ -1,0 +1,140 @@
+#ifndef NEXUS_IPC_STATE_FILE_H
+#define NEXUS_IPC_STATE_FILE_H
+
+/**
+ * @file state_file.h
+ * @brief 状态文件读写封装
+ *
+ * 提供线程安全、崩溃安全的 JSON 状态文件读写。
+ * 写入流程: serialize → .tmp → rename(原子替换)
+ * 读取流程: 先检查 .lock 是否被持有 → 读文件 → 解析 JSON
+ */
+
+#include <chrono>
+#include <filesystem>
+#include <mutex>
+#include <string>
+
+#include <fmt/format.h>
+#include <nlohmann/json.hpp>
+#include <spdlog/spdlog.h>
+
+#include "nexus/types/status.h"
+
+namespace nexus::ipc {
+
+namespace fs = std::filesystem;
+
+// ═══════════════════════════════════════════════════════════════════
+// 文件锁 (Windows Named Mutex)
+// ═══════════════════════════════════════════════════════════════════
+
+class FileLock {
+public:
+  FileLock() noexcept = default;
+  ~FileLock() noexcept;
+
+  FileLock(const FileLock&) = delete;
+  FileLock& operator=(const FileLock&) = delete;
+  FileLock(FileLock&&) noexcept;
+  FileLock& operator=(FileLock&&) noexcept;
+
+  /// 获取文件锁（依据路径哈希创建 Windows 命名互斥体）
+  auto acquire(const std::string& path, int timeout_ms = 1000) noexcept -> bool;
+
+  /// 释放锁
+  void release() noexcept;
+
+  /// 是否持有锁
+  [[nodiscard]] auto is_held() const noexcept -> bool { return mutex_ != nullptr; }
+
+private:
+  void* mutex_ = nullptr;  // HANDLE (避免 windows.h 污染)
+  std::string name_;
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// 状态文件写入器
+// ═══════════════════════════════════════════════════════════════════
+
+class StateFileWriter {
+public:
+  explicit StateFileWriter(std::string path) noexcept
+    : path_(std::move(path)) {}
+
+  /// 写入 JSON 状态（含锁保护 + 原子重命名）
+  auto write(const nlohmann::json& data) noexcept -> Status;
+
+  /// 获取文件路径
+  [[nodiscard]] auto path() const noexcept -> const std::string& { return path_; }
+
+private:
+  std::string path_;
+  std::mutex mutex_;  // 本进程内互斥
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// 状态文件读取器
+// ═══════════════════════════════════════════════════════════════════
+
+class StateFileReader {
+public:
+  explicit StateFileReader(std::string path) noexcept
+    : path_(std::move(path)) {}
+
+  /// 读取状态文件，失败时重试
+  auto read(int retries = 1, int retry_delay_ms = 100) noexcept
+      -> Result<nlohmann::json>;
+
+  /// 检查文件是否存在
+  [[nodiscard]] auto exists() const noexcept -> bool {
+    return fs::exists(path_);
+  }
+
+  /// 获取文件最后修改时间
+  [[nodiscard]] auto last_modified() const noexcept
+      -> std::chrono::system_clock::time_point {
+    return fs::exists(path_)
+      ? fs::last_write_time(path_)
+      : std::chrono::system_clock::time_point{};
+  }
+
+  /// 获取文件路径
+  [[nodiscard]] auto path() const noexcept -> const std::string& { return path_; }
+
+private:
+  std::string path_;
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// 工具函数
+// ═══════════════════════════════════════════════════════════════════
+
+/// 获取当前 ISO 8601 时间戳
+auto current_iso_timestamp() -> std::string;
+
+/// 获取当前 Unix 时间戳（秒）
+auto current_unix_time() -> double;
+
+/// 获取当前进程 PID
+auto current_pid() -> int;
+
+// ═══════════════════════════════════════════════════════════════════
+// 实现（内联）
+// ═══════════════════════════════════════════════════════════════════
+
+inline auto current_iso_timestamp() -> std::string {
+  return fmt::format("{:%Y-%m-%dT%H:%M:%SZ}",
+    fmt::gmtime(std::chrono::system_clock::to_time_t(
+      std::chrono::system_clock::now())));
+}
+
+inline auto current_unix_time() -> double {
+  using namespace std::chrono;
+  return duration_cast<duration<double>>(
+    system_clock::now().time_since_epoch()).count();
+}
+
+}  // namespace nexus::ipc
+
+#endif  // NEXUS_IPC_STATE_FILE_H

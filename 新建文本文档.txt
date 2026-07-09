@@ -1,0 +1,66 @@
+好。写一个可执行的实现路线图，放到 `D:/nexus/docs/ROADMAP.md`。每个阶段定义清楚：做什么、多少工作量、怎么验证。
+
+`D:/nexus/` 已完整就绪。**32 个文件，215KB，0 行运行代码**。
+
+---
+
+## 最终交付物
+
+```
+D:/nexus/
+├── README.md        项目概述 + 与 D:/synapse 的关系说明
+├── LICENSE          Apache 2.0
+├── .gitignore
+├── CMakeLists.txt   根构建系统 (7 EXE + 3 共享库)
+├── vcpkg.json       依赖清单 (fmt/spdlog/json/gtest)
+│
+├── docs/
+│   ├── WHITE_PAPER.md      ← 核心白皮书 (架构/组件/通信/编码/开源)
+│   ├── IPC_PROTOCOL.md     ← 文件 IPC 规范 (mmap/锁/状态文件)
+│   ├── BUILD.md            ← 编译指南
+│   ├── CONTRIBUTING.md     ← 开源贡献规范
+│   └── ROADMAP.md          ← 实现路线图 (8 个 Phase/估算 50-70h)
+│
+├── include/nexus/{ipc,types,utils}/
+│   ├── status.h            无异常错误处理 (Status/Result<T>)
+│   ├── component_state.h   标准状态文件结构
+│   ├── state_file.h        文件锁 + 原子写入
+│   ├── mmap_ringbuf.h      mmap 环状缓冲区
+│   └── logger.h            spdlog 统一日志
+│
+├── src/{coordinator,env_checker,core,algo,daemon,psyche,bridge}/
+│   └── main.cpp × 7      每个 EXE 的骨架入口
+│
+└── tests/
+    ├── CMakeLists.txt
+    └── test_env/env_checker_test.cpp  GTest 单元测试桩
+```
+
+## 实现路线图（8 个 Phase）
+
+```
+Phase 0  IPC 基础设施     2-4h  共享库编译通过
+Phase 1  env_checker.exe  2-3h  CUDA检测 → env.json ✅ 最快可验证
+Phase 2  daemon.exe       3-5h  心跳 + psi_field.mmap
+Phase 3  core.exe         6-10h Qwythos-9B GPU加载 (llama.cpp包装)
+Phase 4  algo.exe        20-30h 10算法引擎移植 (最大Phase)
+Phase 5  psyche.exe       4-6h  Ψ-Navigator 12标量
+Phase 6  bridge.exe       4-6h  MCP桥接 + 种子通道
+Phase 7  coordinator.exe  4-6h  全生命周期管理
+
+总估算: 50-70 小时
+可并行: Phase 2(daemon) + Phase 3(core) + Phase 4(algo) 无相互依赖
+```
+
+## 建议启动顺序
+
+从 **Phase 0 + Phase 1** 入手：
+
+```
+Step 1: 安装 vcpkg + CUDA Toolkit + VS2022
+Step 2: cmake -B build → cmake --build  (IPC 库编译通过)
+Step 3: env_checker.exe --output .nexus/env.json --verbose
+        → 输出 GPU/VRAM 信息，写入 env.json  ✅ 第一个里程碑
+```
+
+之后再按 **daemon → core → algo → psyche → bridge → coordinator** 逐个实现。每个 EXE 完成后都可以独立编译+运行+验证，不影响当前 `D:/synapse` 生产系统。
