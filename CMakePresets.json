@@ -20,7 +20,7 @@
       "cacheVariables": {
         "NEXUS_USE_VCPKG": "ON",
         "NEXUS_BUILD_TESTS": "ON",
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        "CMAKE_TOOLCHAIN_FILE": "D:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake"
       }
     },
     {

@@ -10,40 +10,84 @@
 | vcpkg | 最新 | 见下方说明 |
 | Git | ≥ 2.40 | `winget install Git.Git` |
 
-## 安装 vcpkg
+## 三种构建方式
+
+### 方式 A: 一键部署 (推荐)
 
 ```powershell
-# 克隆 vcpkg（推荐放在 D:/dev/ 下）
+# 自动安装 vcpkg + 依赖 + cmake 配置 + 编译
+setup_vcpkg.bat
+```
+
+### 方式 B: vcpkg 手动
+
+```powershell
+# 1. 安装 vcpkg
 cd D:/dev
 git clone https://github.com/microsoft/vcpkg.git
 cd vcpkg
 bootstrap-vcpkg.bat
 
-# 集成到全局（可选）
-vcpkg integrate install
+# 2. 安装依赖
+vcpkg install fmt spdlog nlohmann-json gtest --triplet x64-windows
+
+# 3. 配置 (vcpkg 模式)
+cd D:/nexus
+cmake --preset vcpkg
+
+# 4. 编译 + 测试
+cmake --build build --config Release -j
+ctest --test-dir build --output-on-failure -C Release
 ```
 
-## 配置和构建
+### 方式 C: 无 vcpkg (内嵌 third_party)
 
 ```powershell
-# 1. 克隆 Nexus 源码
-git clone <nexus-repo-url> D:/nexus
-cd D:/nexus
+# 无网络可用时, 使用内嵌的 minimal json.hpp + std::format
+cmake --preset default
+cmake --build build --config Release -j
+```
 
-# 2. 配置 CMake
-cmake -B build -S . `
-  -DCMAKE_TOOLCHAIN_FILE="D:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" `
-  -DCMAKE_BUILD_TYPE=Release `
-  -DNEXUS_BUILD_TESTS=ON
+## CMake 预设
 
-# 3. 编译
+| 预设 | 说明 | vcpkg | CUDA | 测试 |
+|:--|:--|:--|:--|:--|
+| `default` | 默认 (内嵌依赖) | OFF | ON | OFF |
+| `vcpkg` | vcpkg 完整模式 | ON | ON | ON |
+| `minimal` | 最小构建 (无 CUDA) | OFF | OFF | OFF |
+
+```powershell
+# 使用预设
+cmake --preset vcpkg
 cmake --build build --config Release -j
 
-# 4. 运行测试
+# 或单行
+cmake --preset default && cmake --build build --config Release -j
+```
+
+## 编译产物
+
+| EXE | 大小 | 用途 |
+|:--|:--|:--|
+| `env_checker.exe` | 317 KB | 环境检测 |
+| `daemon.exe` | 344 KB | 后台守护 |
+| `core.exe` | 3.6 MB | 推理引擎 |
+| `algo.exe` | 448 KB | 算法池 |
+| `psyche.exe` | 337 KB | 意识层 |
+| `bridge.exe` | 338 KB | 桥接层 |
+| `coordinator.exe` | 325 KB | 生命周期 |
+| `algo_engine.exe` | 10 KB | 隔离子进程 |
+
+## 运行测试
+
+```powershell
+# 完整测试
 ctest --test-dir build --output-on-failure -C Release
 
-# 5. 运行系统
-.\build\bin\Release\coordinator.exe --start
+# 单独测试
+build\bin\Release\env_checker.exe --output .nexus\env.json --verbose
+build\bin\Release\algo.exe --env .nexus\env_state.json --validate
+build\bin\Release\coordinator.exe --start
 ```
 
 ## 常见问题
@@ -51,7 +95,7 @@ ctest --test-dir build --output-on-failure -C Release
 ### vcpkg 下载依赖超时
 
 ```powershell
-# 设置代理（需要先有 HTTP 代理）
+# 设置代理
 set HTTPS_PROXY=http://127.0.0.1:7890
 # 或使用二进制缓存
 vcpkg binary-caching --provider=nuget --nuget-repository=D:/.vcpkg-cache
@@ -60,35 +104,12 @@ vcpkg binary-caching --provider=nuget --nuget-repository=D:/.vcpkg-cache
 ### CUDA 未找到
 
 ```powershell
-# 确认 CUDA_PATH 环境变量已设置
 echo $env:CUDA_PATH
-# 如果未设置：
-$env:CUDA_PATH = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.8"
+$env:CUDA_PATH = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.4"
 ```
 
 ### MSVC 编译器未找到
 
-在"Developer PowerShell for VS 2022"中运行 CMake，或在普通终端中运行：
-
 ```powershell
 & "C:/Program Files/Microsoft Visual Studio/2022/Community/Common7/Tools/Launch-VsDevShell.ps1"
-```
-
-## 构建配置
-
-| 配置 | 用途 |
-|:--|:--|
-| `Debug` | 开发调试，-O0 + 调试符号 |
-| `Release` | 生产发布，-O2 + LTCG |
-| `RelWithDebInfo` | 带符号的发布构建 |
-| `MinSizeRel` | 最小体积发布构建 |
-
-### 不同配置构建
-
-```powershell
-cmake -B build/debug -S . -DCMAKE_BUILD_TYPE=Debug
-cmake --build build/debug --config Debug -j
-
-cmake -B build/release -S . -DCMAKE_BUILD_TYPE=Release
-cmake --build build/release --config Release -j
 ```
