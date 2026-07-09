@@ -21,6 +21,7 @@
 #include "nexus/types/component_state.h"
 #include "nexus/utils/logger.h"
 #include "nexus/algo/engine.h"
+#include "nexus/algo/audit.h"
 
 // 算法引擎头文件
 #include "engines/mcmc_engine.h"
@@ -118,6 +119,12 @@ static auto register_all_engines(nexus::utils::Logger* logger,
   }
 
   NEXUS_LOG(logger, info, "引擎注册完成: {} 个", registry.count());
+
+  // 运行审计
+  auto& audit = nexus::algo::AuditEngine::instance();
+  auto audit_report = audit.run_all();
+  NEXUS_LOG(logger, info, "审计: {}/{} 通过 ({} 失败)",
+    audit_report.passed, audit_report.total, audit_report.failed);
 
   // ── 验证模式 ──
   if (run_validate) {
@@ -228,7 +235,11 @@ auto main(int argc, char* argv[]) -> int {
     std::cout << "  总计: " << registry.count() << " 个引擎\n\n";
   }
 
-  // 4. 写状态文件
+  // 4. 运行审计
+  auto audit_report = nexus::algo::AuditEngine::instance().run_all();
+  NEXUS_LOG(logger, info, "审计: {}/{} 通过", audit_report.passed, audit_report.total);
+
+  // 5. 写状态文件
   auto& registry = nexus::algo::EngineRegistry::instance();
   auto engine_list = nlohmann::json::array();
   for (const auto& info : registry.list_details()) {

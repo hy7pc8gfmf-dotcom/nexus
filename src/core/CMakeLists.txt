@@ -17,7 +17,8 @@ FetchContent_MakeAvailable(llama)
 add_executable(core
   main.cpp
   vram_manager.cpp
-  expert_loader.cpp)
+  expert_loader.cpp
+  scheduler.cpp)
 
 target_link_libraries(core PRIVATE
   nexus_ipc
