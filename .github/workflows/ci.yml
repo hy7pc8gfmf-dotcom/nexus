@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSVC
+        uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: 17
+
+      - name: Setup CUDA
+        uses: Jimver/cuda-toolkit@v0.2
+        with:
+          cuda: '12.4'
+          method: 'network'
+
+      - name: Configure CMake
+        run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DNEXUS_CUDA_SUPPORT=ON -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF
+
+      - name: Build
+        run: cmake --build build --config Release -j
+
+      - name: List EXEs
+        run: Get-ChildItem build/bin/Release/*.exe | Select-Object Name, Length
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake
+
+      - name: Configure CMake
+        run: cmake -B build -S . -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF
+
+      - name: Build
+        run: cmake --build build --config Release -j
+
+      - name: List binaries
+        run: ls -lh build/bin/Release/ 2>/dev/null || ls -lh build/
