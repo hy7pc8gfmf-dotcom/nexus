@@ -18,7 +18,8 @@ add_executable(core
   main.cpp
   vram_manager.cpp
   expert_loader.cpp
-  scheduler.cpp)
+  scheduler.cpp
+  block_swapper.cpp)
 
 target_link_libraries(core PRIVATE
   nexus_ipc

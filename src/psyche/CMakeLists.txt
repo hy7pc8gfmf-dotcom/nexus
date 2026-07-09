@@ -3,7 +3,8 @@ add_executable(psyche
   navigator.cpp
   emergence.cpp
   convergence.cpp
-  sophia_core.cpp)
+  sophia_core.cpp
+  self_evolve.cpp)
 
 target_link_libraries(psyche PRIVATE nexus_ipc nexus_types)
 if(NEXUS_USE_VCPKG)
