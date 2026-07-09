@@ -25,6 +25,10 @@
 // 算法引擎头文件
 #include "engines/mcmc_engine.h"
 #include "engines/dre_engine.h"
+#include "engines/dual_pruning_engine.h"
+#include "engines/infinitas_truth_engine.h"
+#include "engines/dialectical_consensus_engine.h"
+#include "engines/mtcs_engine.h"
 
 namespace fs = std::filesystem;
 
@@ -71,14 +75,26 @@ static auto register_all_engines(nexus::utils::Logger* logger,
     std::make_unique<nexus::algo::engines::DreEngine>());
   NEXUS_LOG(logger, info, "注册引擎: dre");
 
-  // ── 占位引擎（将于 Phase 4 后续迭代实现）──
+  registry.register_engine(
+    std::make_unique<nexus::algo::engines::DualPruningEngine>());
+  NEXUS_LOG(logger, info, "注册引擎: dual_pruning");
+
+  registry.register_engine(
+    std::make_unique<nexus::algo::engines::MtcsEngine>());
+  NEXUS_LOG(logger, info, "注册引擎: mtcs");
+
+  registry.register_engine(
+    std::make_unique<nexus::algo::engines::InfinitasTruthEngine>());
+  NEXUS_LOG(logger, info, "注册引擎: infinitas_truth");
+
+  registry.register_engine(
+    std::make_unique<nexus::algo::engines::DialecticalConsensusEngine>());
+  NEXUS_LOG(logger, info, "注册引擎: dialectical_consensus");
+
+  // ── 占位引擎（待实现）──
   const std::vector<std::pair<std::string, std::string>> placeholder_engines = {
-    {"dual_pruning",       "双逻辑剪枝"},
-    {"mtcs",               "多任务认知调度"},
     {"multimodal_verifier","多模态验证"},
-    {"infinitas_truth",   "无限向量对称真值"},
     {"temporal_kg",       "知识图谱时序衰减"},
-    {"dialectical_consensus","辩证共识"},
     {"ethical_evaluation", "伦理评估"},
     {"paper_generation",  "论文生成验证"},
   };
@@ -157,6 +173,40 @@ static auto register_all_engines(nexus::utils::Logger* logger,
           result.value()["final_synthesis"].get<std::string>());
       }
     }
+
+    // 测试双剪枝引擎
+    auto* dp = registry.get("dual_pruning");
+    if (dp) {
+      auto test_input = nlohmann::json::object();
+      auto cand = nlohmann::json::array();
+      cand.push_back("人工智能发展迅速");
+      cand.push_back("AI发展很快");
+      cand.push_back("今天天气很好");
+      test_input["candidates"] = cand;
+      test_input["threshold"] = 0.6;
+      auto result = dp->execute(test_input);
+      if (result.ok()) {
+        NEXUS_LOG(logger, info, "双剪枝验证: {} → {} (剪除 {})",
+          result.value()["input_count"].get<int>(),
+          result.value()["output_count"].get<int>(),
+          result.value()["pruned_count"].get<int>());
+      }
+    }
+
+    // 测试辩证共识引擎
+    auto* dc = registry.get("dialectical_consensus");
+    if (dc) {
+      auto test_input = nlohmann::json::object();
+      auto vps = nlohmann::json::array();
+      vps.push_back("AI should be regulated for safety");
+      vps.push_back("AI regulation is needed for safety");
+      test_input["viewpoints"] = vps;
+      auto result = dc->execute(test_input);
+      if (result.ok()) {
+        NEXUS_LOG(logger, info, "共识验证: score={}",
+          result.value()["consensus_score"].get<double>());
+      }
+    }
   }
 
   return nexus::Status::Ok();
@@ -224,8 +274,8 @@ auto main(int argc, char* argv[]) -> int {
 
   auto details = nlohmann::json::object();
   details["total_engines"]    = registry.count();
-  details["implemented"]      = 2;
-  details["placeholder"]      = 8;
+  details["implemented"]      = 6;
+  details["placeholder"]      = 4;
   details["engines"]          = engine_list;
   state["details"] = details;
 
