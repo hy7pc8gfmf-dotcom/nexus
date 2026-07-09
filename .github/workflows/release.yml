@@ -7,25 +7,25 @@ on:
 jobs:
   release:
     runs-on: windows-latest
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v2
-
-      - name: Build Release
+      - name: Build
+        shell: cmd
         run: |
-          cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF
+          call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat" -arch=x64
+          cmake -B build -S . -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DFETCHCONTENT_FULLY_DISCONNECTED=OFF
           cmake --build build --config Release -j
 
       - name: Package
+        shell: pwsh
         run: |
           mkdir nexus-release
           copy build\bin\Release\*.exe nexus-release\
+          copy build\bin\Release\*.dll nexus-release\ 2>$null
           copy LICENSE nexus-release\
           copy README.md nexus-release\
-          tar -a -c -f nexus-${{ github.ref_name }}.zip nexus-release\
+          Compress-Archive -Path nexus-release\* -DestinationPath nexus-${{ github.ref_name }}.zip
 
       - name: Upload Release
         uses: softprops/action-gh-release@v2
