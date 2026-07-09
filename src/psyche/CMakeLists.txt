@@ -5,7 +5,8 @@ add_executable(psyche
   convergence.cpp
   sophia_core.cpp
   self_evolve.cpp
-  observer.cpp)
+  observer.cpp
+  algo_quantum.cpp)
 
 target_link_libraries(psyche PRIVATE nexus_ipc nexus_types)
 if(NEXUS_USE_VCPKG)
