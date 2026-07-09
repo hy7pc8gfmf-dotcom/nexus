@@ -1,104 +1,239 @@
 /**
- * algo.exe — 算法引擎池 (CPU)
+ * @file main.cpp — algo.exe
+ * @brief 算法引擎池 — 注册 + 初始化 + 审计
  *
- * 启动方式: algo.exe --env .nexus/env.json
- * 职责: 10 个算法引擎注册, 审计, 自演进
+ * 启动: algo.exe --env .nexus/env.json [--validate] [--list]
+ *
+ * Phase 4 实现:
+ *   注册 10 个算法引擎 → 初始化 → 写状态文件
+ *   引擎注册表使用插件架构, 可按需扩展。
  */
 
+#include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <iostream>
+#include <string>
 
-#include <fmt/format.h>
 #include <nlohmann/json.hpp>
-#include <spdlog/spdlog.h>
 
 #include "nexus/ipc/state_file.h"
 #include "nexus/types/component_state.h"
 #include "nexus/utils/logger.h"
+#include "nexus/algo/engine.h"
+
+// 算法引擎头文件
+#include "engines/mcmc_engine.h"
+#include "engines/dre_engine.h"
+
+namespace fs = std::filesystem;
+
+// ═══════════════════════════════════════════════════════════════════
+// 命令行
+// ═══════════════════════════════════════════════════════════════════
 
 struct CliArgs {
-  std::string env_path   = ".nexus/env.json";
-  std::string data_dir   = ".nexus";
+  std::string env_path  = ".nexus/env.json";
+  std::string data_dir  = ".nexus";
   bool validate = false;
-  std::vector<std::string> engine_filter;
+  bool list     = false;
 };
 
 static auto parse_args(int argc, char* argv[]) -> CliArgs {
   CliArgs args;
   for (int i = 1; i < argc; ++i) {
     std::string arg(argv[i]);
-    if (arg == "--env" && i + 1 < argc) args.env_path = argv[++i];
+    if (arg == "--env" && i + 1 < argc)  args.env_path = argv[++i];
     else if (arg == "--validate")        args.validate = true;
-    else if (arg == "--engines" && i + 1 < argc) {
-      auto list = std::string(argv[++i]);
-      size_t pos = 0;
-      while ((pos = list.find(',')) != std::string::npos) {
-        args.engine_filter.push_back(list.substr(0, pos));
-        list.erase(0, pos + 1);
-      }
-      args.engine_filter.push_back(list);
-    }
+    else if (arg == "--list")            args.list = true;
     else if (arg == "--help" || arg == "-h") {
-      fmt::println("用法: algo.exe --env <path> [--validate] [--engines mcmc,dual_pruning]");
+      std::cout << "用法: algo.exe --env <path> [--validate] [--list]\n";
       std::exit(0);
     }
   }
   return args;
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// 注册所有引擎
+// ═══════════════════════════════════════════════════════════════════
+
+static auto register_all_engines(nexus::utils::Logger* logger,
+                                  bool run_validate) -> nexus::Status {
+  auto& registry = nexus::algo::EngineRegistry::instance();
+
+  // ── 已实现的引擎 ──
+  registry.register_engine(
+    std::make_unique<nexus::algo::engines::McmcEngine>());
+  NEXUS_LOG(logger, info, "注册引擎: mcmc");
+
+  registry.register_engine(
+    std::make_unique<nexus::algo::engines::DreEngine>());
+  NEXUS_LOG(logger, info, "注册引擎: dre");
+
+  // ── 占位引擎（将于 Phase 4 后续迭代实现）──
+  const std::vector<std::pair<std::string, std::string>> placeholder_engines = {
+    {"dual_pruning",       "双逻辑剪枝"},
+    {"mtcs",               "多任务认知调度"},
+    {"multimodal_verifier","多模态验证"},
+    {"infinitas_truth",   "无限向量对称真值"},
+    {"temporal_kg",       "知识图谱时序衰减"},
+    {"dialectical_consensus","辩证共识"},
+    {"ethical_evaluation", "伦理评估"},
+    {"paper_generation",  "论文生成验证"},
+  };
+
+  // 占位引擎：使用 lambda 表达式注册
+  for (const auto& [id, name] : placeholder_engines) {
+    struct PlaceholderEngine : public nexus::algo::AlgorithmEngine {
+      std::string id_;
+      std::string name_;
+      PlaceholderEngine(std::string id, std::string name)
+        : id_(std::move(id)), name_(std::move(name)) {}
+
+      auto info() const noexcept -> nexus::algo::EngineInfo override {
+        return {id_, name_, "0.1.0", "占位 — 待实现", {}};
+      }
+      auto initialize(const nlohmann::json&) noexcept -> nexus::Status override {
+        return nexus::Status::Ok();
+      }
+      auto execute(const nlohmann::json&) noexcept
+          -> nexus::Result<nlohmann::json> override {
+        auto j = nlohmann::json::object();
+        j["status"] = "placeholder";
+        j["engine"] = id_;
+        return j;
+      }
+      auto status() const noexcept -> nlohmann::json override {
+        auto j = nlohmann::json::object();
+        j["engine"]  = id_;
+        j["type"]    = "placeholder";
+        return j;
+      }
+      auto is_initialized() const noexcept -> bool override { return true; }
+    };
+
+    registry.register_engine(
+      std::make_unique<PlaceholderEngine>(id, name));
+    NEXUS_LOG(logger, debug, "注册引擎: {} ({})", id, name);
+  }
+
+  // ── 初始化所有引擎 ──
+  auto init_status = registry.initialize_all();
+  if (!init_status.ok()) {
+    return init_status;
+  }
+
+  NEXUS_LOG(logger, info, "引擎注册完成: {} 个", registry.count());
+
+  // ── 验证模式 ──
+  if (run_validate) {
+    // 测试 MCMC 引擎
+    auto* mcmc = registry.get("mcmc");
+    if (mcmc) {
+      auto test_input = nlohmann::json::object();
+      test_input["mean"]     = 0.0;
+      test_input["std"]      = 1.0;
+      test_input["n_samples"] = 100;
+      test_input["n_chains"]  = 2;
+      auto result = mcmc->execute(test_input);
+      if (result.ok()) {
+        auto chains = result.value()["chains"];
+        NEXUS_LOG(logger, info, "MCMC 验证: {} chains, 每链 {} samples",
+          static_cast<int>(chains.size()),
+          static_cast<int>(chains[0]["samples"].size()));
+      }
+    }
+
+    // 测试 DRE 引擎
+    auto* dre = registry.get("dre");
+    if (dre) {
+      auto test_input = nlohmann::json::object();
+      test_input["thesis"] = "人工智能应该被严格监管";
+      test_input["iterations"] = 2;
+      auto result = dre->execute(test_input);
+      if (result.ok()) {
+        NEXUS_LOG(logger, info, "DRE 验证: {}",
+          result.value()["final_synthesis"].get<std::string>());
+      }
+    }
+  }
+
+  return nexus::Status::Ok();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// main
+// ═══════════════════════════════════════════════════════════════════
+
 auto main(int argc, char* argv[]) -> int {
   auto args = parse_args(argc, argv);
-  auto logger = nexus::utils::init_logger("algo", ".nexus/logs");
+  fs::create_directories(args.data_dir + "/logs");
 
+  auto logger = nexus::utils::init_logger("algo", args.data_dir + "/logs");
   NEXUS_LOG(logger, info, "algo v{} 启动", "1.0.0");
 
   // 1. 读取 env.json
-  nexus::ipc::StateFileReader env_reader(args.env_path);
-  auto env = env_reader.read();
-  if (!env.ok()) {
-    NEXUS_LOG(logger, error, "读取 env.json 失败: {}", env.error().to_string());
-    return 1;
-  }
-
-  // 2. 注册算法引擎
-  const std::vector<std::string> all_engines = {
-    "mcmc", "dual_pruning", "mtcs", "multimodal_verifier",
-    "infinitas_truth", "dre", "temporal_kg",
-    "dialectical_consensus", "ethical_evaluation", "paper_generation"
-  };
-
-  for (const auto& e : all_engines) {
-    if (!args.engine_filter.empty() &&
-        std::find(args.engine_filter.begin(), args.engine_filter.end(), e)
-        == args.engine_filter.end()) {
-      continue;
+  {
+    nexus::ipc::StateFileReader env_reader(args.env_path);
+    auto env = env_reader.read();
+    if (env.ok()) {
+      NEXUS_LOG(logger, info, "env.json 已读取");
+    } else {
+      NEXUS_LOG(logger, warn, "env.json 不可用 (降级运行)");
     }
-    NEXUS_LOG(logger, info, "注册算法引擎: {}", e);
-    // TODO: engine_registry.register(e)
   }
 
-  // 3. 启动隔离子进程
-  // TODO: 启动 algo_engine.exe, recursor.exe
+  // 2. 注册和初始化引擎
+  auto reg_status = register_all_engines(logger.get(), args.validate);
+  if (!reg_status.ok()) {
+    NEXUS_LOG(logger, error, "引擎注册失败: {}", reg_status.to_string());
+  }
 
-  // 4. 审计引擎初始化
-  // TODO: audit_engine.init(40 rules)
+  // 3. 列出引擎
+  if (args.list) {
+    auto& registry = nexus::algo::EngineRegistry::instance();
+    std::cout << "\n=== 算法引擎列表 ===\n";
+    for (const auto& info : registry.list_details()) {
+      std::cout << "  " << info.id << ": " << info.name
+                << " (v" << info.version << ")\n";
+    }
+    std::cout << "  总计: " << registry.count() << " 个引擎\n\n";
+  }
 
-  // 5. 写状态文件
+  // 4. 写状态文件
+  auto& registry = nexus::algo::EngineRegistry::instance();
+  auto engine_list = nlohmann::json::array();
+  for (const auto& info : registry.list_details()) {
+    auto entry = nlohmann::json::object();
+    entry["id"]      = info.id;
+    entry["name"]    = info.name;
+    entry["version"] = info.version;
+    engine_list.push_back(entry);
+  }
+
   nexus::ipc::StateFileWriter writer(args.data_dir + "/algo_state.json");
-  writer.write(nlohmann::json{
-    {"$schema", "nexus-state-v1"},
-    {"version", "1.0"},
-    {"component", "algo"},
-    {"status", "ready"},
-    {"pid", nexus::ipc::current_pid()},
-    {"started_at", nexus::ipc::current_iso_timestamp()},
-    {"updated_at", nexus::ipc::current_iso_timestamp()},
-    {"details", {
-      {"algorithms", all_engines.size()},
-      {"registered", args.engine_filter.empty() ? all_engines.size() : args.engine_filter.size()},
-    }},
-  });
+  auto state = nlohmann::json::object();
+  state["$schema"]    = "nexus-state-v1";
+  state["version"]    = "1.0";
+  state["component"]  = "algo";
+  state["status"]     = "ready";
+  state["pid"]        = nexus::ipc::current_pid();
+  state["started_at"] = nexus::ipc::current_iso_timestamp();
+  state["updated_at"] = nexus::ipc::current_iso_timestamp();
 
-  NEXUS_LOG(logger, info, "完成 ({} 引擎注册)", all_engines.size());
+  auto details = nlohmann::json::object();
+  details["total_engines"]    = registry.count();
+  details["implemented"]      = 2;
+  details["placeholder"]      = 8;
+  details["engines"]          = engine_list;
+  state["details"] = details;
+
+  auto ws = writer.write(state);
+  if (!ws.ok()) {
+    NEXUS_LOG(logger, error, "写入状态文件失败: {}", ws.to_string());
+  }
+
+  NEXUS_LOG(logger, info, "完成 ({} 引擎)", registry.count());
   return 0;
 }
