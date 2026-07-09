@@ -5,7 +5,8 @@ add_executable(bridge
   global_memory.cpp
   seed_cultivator.cpp
   willchain.cpp
-  capability.cpp)
+  capability.cpp
+  sinan.cpp)
 
 target_link_libraries(bridge PRIVATE nexus_ipc nexus_types)
 if(NEXUS_USE_VCPKG)
