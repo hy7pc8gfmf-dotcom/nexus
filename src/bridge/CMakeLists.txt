@@ -3,7 +3,9 @@ add_executable(bridge
   mcp_client.cpp
   seed_channel.cpp
   global_memory.cpp
-  seed_cultivator.cpp)
+  seed_cultivator.cpp
+  willchain.cpp
+  capability.cpp)
 
 target_link_libraries(bridge PRIVATE nexus_ipc nexus_types)
 if(NEXUS_USE_VCPKG)
