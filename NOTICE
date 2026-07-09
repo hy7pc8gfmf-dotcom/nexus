@@ -1,0 +1,15 @@
+Nexus — AGI Nervous System
+Copyright 2026 CherryClaw & Contributors
+
+This product includes software developed by:
+- The llama.cpp project (https://github.com/ggerganov/llama.cpp) - MIT License
+- The NLohmann JSON project (https://github.com/nlohmann/json) - MIT License
+- The fmt library (https://github.com/fmtlib/fmt) - MIT License
+- The spdlog library (https://github.com/gabime/spdlog) - MIT License
+
+Portions of this software are derived from Coq proof extraction:
+- D:/synapse/meta_kernel_rules.c — Recursor Theory (Coq verified)
+- D:/synapse/constructive_rules.c — Constructive Logic (Coq extracted)
+- D:/synapse/proofs/AuditFramework.v — Audit Framework (Coq formal proof)
+
+See LICENSE for full terms.
