@@ -29,6 +29,10 @@
 #include "engines/infinitas_truth_engine.h"
 #include "engines/dialectical_consensus_engine.h"
 #include "engines/mtcs_engine.h"
+#include "engines/multimodal_verifier_engine.h"
+#include "engines/temporal_kg_engine.h"
+#include "engines/ethical_evaluation_engine.h"
+#include "engines/paper_generation_engine.h"
 
 namespace fs = std::filesystem;
 
@@ -91,48 +95,21 @@ static auto register_all_engines(nexus::utils::Logger* logger,
     std::make_unique<nexus::algo::engines::DialecticalConsensusEngine>());
   NEXUS_LOG(logger, info, "注册引擎: dialectical_consensus");
 
-  // ── 占位引擎（待实现）──
-  const std::vector<std::pair<std::string, std::string>> placeholder_engines = {
-    {"multimodal_verifier","多模态验证"},
-    {"temporal_kg",       "知识图谱时序衰减"},
-    {"ethical_evaluation", "伦理评估"},
-    {"paper_generation",  "论文生成验证"},
-  };
+  registry.register_engine(
+    std::make_unique<nexus::algo::engines::MultimodalVerifierEngine>());
+  NEXUS_LOG(logger, info, "注册引擎: multimodal_verifier");
 
-  // 占位引擎：使用 lambda 表达式注册
-  for (const auto& [id, name] : placeholder_engines) {
-    struct PlaceholderEngine : public nexus::algo::AlgorithmEngine {
-      std::string id_;
-      std::string name_;
-      PlaceholderEngine(std::string id, std::string name)
-        : id_(std::move(id)), name_(std::move(name)) {}
+  registry.register_engine(
+    std::make_unique<nexus::algo::engines::TemporalKgEngine>());
+  NEXUS_LOG(logger, info, "注册引擎: temporal_kg");
 
-      auto info() const noexcept -> nexus::algo::EngineInfo override {
-        return {id_, name_, "0.1.0", "占位 — 待实现", {}};
-      }
-      auto initialize(const nlohmann::json&) noexcept -> nexus::Status override {
-        return nexus::Status::Ok();
-      }
-      auto execute(const nlohmann::json&) noexcept
-          -> nexus::Result<nlohmann::json> override {
-        auto j = nlohmann::json::object();
-        j["status"] = "placeholder";
-        j["engine"] = id_;
-        return j;
-      }
-      auto status() const noexcept -> nlohmann::json override {
-        auto j = nlohmann::json::object();
-        j["engine"]  = id_;
-        j["type"]    = "placeholder";
-        return j;
-      }
-      auto is_initialized() const noexcept -> bool override { return true; }
-    };
+  registry.register_engine(
+    std::make_unique<nexus::algo::engines::EthicalEvaluationEngine>());
+  NEXUS_LOG(logger, info, "注册引擎: ethical_evaluation");
 
-    registry.register_engine(
-      std::make_unique<PlaceholderEngine>(id, name));
-    NEXUS_LOG(logger, debug, "注册引擎: {} ({})", id, name);
-  }
+  registry.register_engine(
+    std::make_unique<nexus::algo::engines::PaperGenerationEngine>());
+  NEXUS_LOG(logger, info, "注册引擎: paper_generation");
 
   // ── 初始化所有引擎 ──
   auto init_status = registry.initialize_all();
@@ -274,8 +251,7 @@ auto main(int argc, char* argv[]) -> int {
 
   auto details = nlohmann::json::object();
   details["total_engines"]    = registry.count();
-  details["implemented"]      = 6;
-  details["placeholder"]      = 4;
+  details["implemented"]      = 10;
   details["engines"]          = engine_list;
   state["details"] = details;
 
