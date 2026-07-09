@@ -11,28 +11,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup MSVC + CUDA
+      - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v2
-        with:
-          vs-version: 17
-      - uses: Jimver/cuda-toolkit@v0.2
-        with:
-          cuda: '12.4'
 
       - name: Build Release
         run: |
-          cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DNEXUS_CUDA_SUPPORT=ON -DNEXUS_BUILD_TESTS=OFF
+          cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF
           cmake --build build --config Release -j
 
       - name: Package
         run: |
           mkdir nexus-release
-          copy build/bin/Release/*.exe nexus-release/
-          copy LICENSE nexus-release/
-          copy README.md nexus-release/
-          compress-archive -Path nexus-release/* -DestinationPath nexus-${{ github.ref_name }}.zip
+          copy build\bin\Release\*.exe nexus-release\
+          copy LICENSE nexus-release\
+          copy README.md nexus-release\
+          tar -a -c -f nexus-${{ github.ref_name }}.zip nexus-release\
 
       - name: Upload Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: nexus-*.zip
