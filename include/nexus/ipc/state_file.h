@@ -25,7 +25,7 @@ namespace nexus::ipc {
 namespace fs = std::filesystem;
 
 // ═══════════════════════════════════════════════════════════════════
-// 文件锁 (Windows Named Mutex)
+// 文件锁 (Windows: Named Mutex / POSIX: flock)
 // ═══════════════════════════════════════════════════════════════════
 
 class FileLock {
@@ -38,18 +38,23 @@ public:
   FileLock(FileLock&&) noexcept;
   FileLock& operator=(FileLock&&) noexcept;
 
-  /// 获取文件锁（依据路径哈希创建 Windows 命名互斥体）
+  /// 获取文件锁
   auto acquire(const std::string& path, int timeout_ms = 1000) noexcept -> bool;
 
   /// 释放锁
   void release() noexcept;
 
   /// 是否持有锁
-  [[nodiscard]] auto is_held() const noexcept -> bool { return mutex_ != nullptr; }
+  [[nodiscard]] auto is_held() const noexcept -> bool;
 
 private:
-  void* mutex_ = nullptr;  // HANDLE (避免 windows.h 污染)
+#ifdef _WIN32
+  void* mutex_ = nullptr;
   std::string name_;
+#else
+  int fd_ = -1;
+  std::string path_;
+#endif
 };
 
 // ═══════════════════════════════════════════════════════════════════

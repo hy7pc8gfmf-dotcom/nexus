@@ -65,7 +65,11 @@ set(NEXUS_THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/third_party")
 # ═══════════════════════════════════════════════════════════════════
 # 共享 IPC 库
 # ═══════════════════════════════════════════════════════════════════
-file(GLOB_RECURSE NEXUS_IPC_SRC "src/ipc/*.cpp")
+if(WIN32)
+  file(GLOB_RECURSE NEXUS_IPC_SRC "src/ipc/state_file.cpp" "src/ipc/mmap_ringbuf.cpp")
+else()
+  file(GLOB_RECURSE NEXUS_IPC_SRC "src/ipc/*_posix.cpp")
+endif()
 file(GLOB_RECURSE NEXUS_IPC_HDR "include/nexus/ipc/*.h")
 
 add_library(nexus_ipc STATIC ${NEXUS_IPC_SRC} ${NEXUS_IPC_HDR})
