@@ -7,7 +7,9 @@ add_executable(psyche
   self_evolve.cpp
   observer.cpp
   algo_quantum.cpp
-  scoreboard.cpp)
+  scoreboard.cpp
+  meta_axiom.cpp
+  holographic.cpp)
 
 target_link_libraries(psyche PRIVATE nexus_ipc nexus_types)
 if(NEXUS_USE_VCPKG)
