@@ -1,7 +1,9 @@
 add_executable(psyche
   main.cpp
   navigator.cpp
-  emergence.cpp)
+  emergence.cpp
+  convergence.cpp
+  sophia_core.cpp)
 
 target_link_libraries(psyche PRIVATE nexus_ipc nexus_types)
 if(NEXUS_USE_VCPKG)
