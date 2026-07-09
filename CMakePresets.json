@@ -1,0 +1,48 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "默认 (无 vcpkg, 使用 third_party)",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "20",
+        "NEXUS_USE_VCPKG": "OFF",
+        "NEXUS_BUILD_TESTS": "OFF",
+        "NEXUS_CUDA_SUPPORT": "ON"
+      }
+    },
+    {
+      "name": "vcpkg",
+      "displayName": "vcpkg 模式 (fmt/spdlog/json/gtest)",
+      "inherits": "default",
+      "cacheVariables": {
+        "NEXUS_USE_VCPKG": "ON",
+        "NEXUS_BUILD_TESTS": "ON",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+      }
+    },
+    {
+      "name": "minimal",
+      "displayName": "最小构建 (无 CUDA, 纯 IPC 测试)",
+      "inherits": "default",
+      "cacheVariables": {
+        "NEXUS_CUDA_SUPPORT": "OFF",
+        "NEXUS_BUILD_TESTS": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "release",
+      "displayName": "Release",
+      "configuration": "Release"
+    }
+  ]
+}
