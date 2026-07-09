@@ -7,7 +7,7 @@ on:
     branches: [master]
 
 jobs:
-  # ── Linux: GCC, 无 CUDA ──
+  # ── Linux: GCC ──
   build-linux:
     runs-on: ubuntu-24.04
     steps:
@@ -17,14 +17,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential git
-          # CMake >= 3.25 from pip (Ubuntu 24.04 has 3.28+, but this ensures it)
-          pip install cmake --upgrade --break-system-packages 2>/dev/null || true
-
-      - name: Check versions
-        run: |
-          cmake --version
-          g++ --version | head -1
-          echo "C++20 support: $([ $(g++ -std=c++20 -x c++ -E - </dev/null 2>/dev/null; echo $?) -eq 0 ] && echo 'yes' || echo 'no')"
 
       - name: Configure
         run: cmake -B build -S . -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DCMAKE_CXX_STANDARD=20
@@ -32,7 +24,7 @@ jobs:
       - name: Build
         run: cmake --build build -j $(nproc) 2>&1 | tail -20
 
-  # ── Windows: MSVC + CUDA (可选) ──
+  # ── Windows (无 CUDA) ──
   build-windows:
     runs-on: windows-latest
     steps:
@@ -41,34 +33,16 @@ jobs:
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v2
 
-      - name: Install CUDA
-        uses: Jimver/cuda-toolkit@v0.2
-        id: cuda
-        with:
-          cuda: '12.4'
-          method: 'network'
-          use-token: false
-
-      - name: Check CUDA
-        run: |
-          echo "CUDA_PATH: ${{ steps.cuda.outputs.CUDA_PATH }}"
-          nvcc --version 2>nul || echo "nvcc not available"
-
       - name: Configure CMake
         run: |
           cmake -B build -S . -G "Visual Studio 17 2022" -A x64 ^
-            -DNEXUS_CUDA_SUPPORT=ON ^
+            -DNEXUS_CUDA_SUPPORT=OFF ^
             -DNEXUS_BUILD_TESTS=OFF ^
             -DNEXUS_USE_VCPKG=OFF ^
             -DFETCHCONTENT_FULLY_DISCONNECTED=OFF
 
-      - name: Build core libs
-        run: cmake --build build --config Release -j --target nexus_ipc nexus_types 2>nul
-        continue-on-error: true
-
-      - name: Build all (allow failures)
+      - name: Build
         run: cmake --build build --config Release -j
-        continue-on-error: true
 
       - name: List EXEs
         run: |
@@ -78,23 +52,3 @@ jobs:
           } else {
             echo "No EXE output directory found"
           }
-
-  # ── Windows: 最小构建 (无 CUDA) ──
-  build-windows-minimal:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v2
-
-      - name: Configure (minimal)
-        run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF
-
-      - name: Build
-        run: cmake --build build --config Release -j
-
-      - name: Verify EXEs
-        run: |
-          echo "=== Build Output ==="
-          Get-ChildItem build/bin/Release/*.exe | Select-Object Name, Length
