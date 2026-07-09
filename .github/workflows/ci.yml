@@ -3,73 +3,53 @@ name: CI
 on:
   push:
     branches: [master]
-  pull_request:
-    branches: [master]
 
 jobs:
-  # ── Linux: GCC ──
+  # ── Linux ──
   build-linux:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Install deps
-        run: sudo apt-get update && sudo apt-get install -y build-essential git
-      - name: Configure
-        run: cmake -B build -S . -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DCMAKE_CXX_STANDARD=20 -DFETCHCONTENT_FULLY_DISCONNECTED=ON
-      - name: Build
-        run: cmake --build build -j $(nproc) 2>&1
-      - name: Verify
-        run: |
-          errors=$(cmake --build build -j $(nproc) 2>&1 | grep -E '^[^ ]*error[^a-zA-Z]' | wc -l)
-          echo "Errors: $errors"
-          [ "$errors" -eq "0" ] || (cmake --build build -j $(nproc) 2>&1 | grep -E '^[^ ]*error' | head -10 && exit 1)
-          echo "BUILD PASS"
+      - run: sudo apt-get update && sudo apt-get install -y build-essential git
+      - run: cmake -B build -S . -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DCMAKE_CXX_STANDARD=20 -DFETCHCONTENT_FULLY_DISCONNECTED=ON
+      - run: cmake --build build -j $(nproc)
+      - run: echo "BUILD OK"
 
-  # ── Windows: MSVC + Ninja ──
+  # ── Windows ──
   build-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
 
-      - name: Setup MSVC
-        uses: microsoft/setup-msbuild@v2
-
-      - name: Setup VS env (find cl.exe)
+      - name: Setup cl.exe
         shell: pwsh
         run: |
-          # VS 2022 is pre-installed on windows-latest
+          # Find VS with vswhere
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          if (Test-Path $vswhere) {
-            $vsPath = & $vswhere -latest -property installationPath
-            $vcvars = "$vsPath\VC\Auxiliary\Build\vcvars64.bat"
-            if (Test-Path $vcvars) {
-              # Run vcvars and capture environment
-              cmd /c "call `"$vcvars`" >nul 2>nul && set" | ForEach-Object {
-                if ($_ -match '^(\w+)=(.*)') {
-                  Set-Item -Path "env:$($matches[1])" -Value $matches[2]
-                }
+          $vsPath = & $vswhere -latest -property installationPath -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64
+          $vcvars = "$vsPath\VC\Auxiliary\Build\vcvars64.bat"
+          echo "VS: $vsPath"
+          echo "VCVARS: $vcvars"
+          if (Test-Path $vcvars) {
+            # vcvars64.bat → set env variables for PowerShell
+            cmd /c "`"$vcvars`" >nul 2>nul && set" | ForEach-Object {
+              if ($_ -match '^(\w+)=(.*)') {
+                Set-Item -Path "env:$($matches[1])" -Value $matches[2]
               }
             }
+            $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
+            if ($cl) { echo "MSVC: $($cl.Source)" } else { throw "cl.exe not found after vcvars" }
+          } else {
+            throw "vcvars64.bat not found at $vcvars"
           }
-          # Verify
-          $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
-          if ($cl) { echo "MSVC OK: $($cl.Source)" } else { echo "MSVC NOT FOUND"; exit 1 }
 
       - name: Configure
         run: cmake -B build -S . -G Ninja -DCMAKE_C_COMPILER=cl.exe -DCMAKE_CXX_COMPILER=cl.exe -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DFETCHCONTENT_FULLY_DISCONNECTED=OFF
 
       - name: Build
-        run: cmake --build build -j 2>&1
+        run: cmake --build build -j
 
-      - name: List EXEs
+      - name: List
+        shell: pwsh
         run: Get-ChildItem build/*.exe -Recurse | Select-Object Name, Length
-
-  # ── 环境诊断 ──
-  diagnostics:
-    strategy:
-      matrix:
-        os: [ubuntu-24.04, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - run: cmake --version | head -1
-      - run: python3 --version 2>/dev/null || python --version 2>/dev/null || echo "no python"
