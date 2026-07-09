@@ -1,6 +1,6 @@
 /**
  * @file expert_loader.cpp
- * @brief ExpertLoader 实现 — 封装 llama.cpp C API
+ * @brief ExpertLoader 实现 — llama.cpp 推理管线
  */
 
 #include "nexus/core/expert_loader.h"
@@ -10,23 +10,23 @@
 #include <cstdlib>
 #include <cstring>
 #include <sstream>
+#include <vector>
 
-// llama.h 通过 FetchContent 引入
 #include "llama.h"
 
 namespace nexus::core {
 
 // ═══════════════════════════════════════════════════════════════════
-// ModelHandle (不透明实现)
+// ModelHandle
 // ═══════════════════════════════════════════════════════════════════
 
 struct ModelHandle {
   llama_model*   model = nullptr;
   llama_context* ctx   = nullptr;
-  bool           loaded = false;
+  const llama_vocab* vocab = nullptr;
 
   ~ModelHandle() {
-    if (ctx)   { llama_free(ctx);   ctx   = nullptr; }
+    if (ctx)   { llama_free(ctx);   ctx = nullptr; }
     if (model) { llama_model_free(model); model = nullptr; }
   }
 };
@@ -36,10 +36,7 @@ struct ModelHandle {
 // ═══════════════════════════════════════════════════════════════════
 
 ExpertLoader::ExpertLoader() noexcept = default;
-ExpertLoader::~ExpertLoader() noexcept {
-  unload();
-}
-
+ExpertLoader::~ExpertLoader() noexcept { unload(); }
 ExpertLoader::ExpertLoader(ExpertLoader&&) noexcept = default;
 ExpertLoader& ExpertLoader::operator=(ExpertLoader&&) noexcept = default;
 
@@ -49,17 +46,13 @@ ExpertLoader& ExpertLoader::operator=(ExpertLoader&&) noexcept = default;
 
 auto ExpertLoader::load(const std::string& gguf_path,
                         const InferParams& params) noexcept -> Status {
-  // 如有已加载模型，先卸载
-  if (is_loaded()) {
-    auto s = unload();
-    if (!s.ok()) return s;
-  }
+  if (is_loaded()) unload();
 
   auto h = std::make_unique<ModelHandle>();
 
   // 模型参数
   auto model_params = llama_model_default_params();
-  model_params.n_gpu_layers = params.n_gpu_layers;
+  model_params.n_gpu_layers = 0;  // CPU-only (llama.cpp CUDA 有编译问题)
 
   h->model = llama_model_load_from_file(gguf_path.c_str(), model_params);
   if (!h->model) {
@@ -72,17 +65,18 @@ auto ExpertLoader::load(const std::string& gguf_path,
   ctx_params.n_ctx   = params.n_ctx;
   ctx_params.n_batch = params.n_batch;
 
-  // 启用 GPU 加速
-#ifdef GGML_USE_CUDA
-  ctx_params.n_gpu_layers = params.n_gpu_layers;
-#endif
-
   h->ctx = llama_init_from_model(h->model, ctx_params);
   if (!h->ctx) {
-    llama_model_free(h->model);
-    h->model = nullptr;
+    llama_model_free(h->model); h->model = nullptr;
     return Status::Error(ErrorCode::kModelLoadFailed,
-      "llama_new_context_with_model failed");
+      "llama_init_from_model failed");
+  }
+
+  // 获取词汇表
+  h->vocab = llama_model_get_vocab(h->model);
+  if (!h->vocab) {
+    return Status::Error(ErrorCode::kModelLoadFailed,
+      "llama_model_get_vocab failed");
   }
 
   handle_     = std::move(h);
@@ -101,32 +95,78 @@ auto ExpertLoader::unload() noexcept -> Status {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// 推理
+// 推理 (llama.cpp 管线)
 // ═══════════════════════════════════════════════════════════════════
 
 auto ExpertLoader::infer(const std::string& prompt,
                          const InferParams& params,
                          TokenCallback on_token) noexcept -> Result<std::string> {
   if (!is_loaded()) {
-    return Status::Error(ErrorCode::kModelNotFound,
-      "no model loaded");
+    return Status::Error(ErrorCode::kModelNotFound, "no model loaded");
   }
 
-  auto* ctx = handle_->ctx;
-  auto* model = handle_->model;
+  auto* ctx    = handle_->ctx;
+  auto* vocab  = handle_->vocab;
+  auto* model  = handle_->model;
 
-  // 推理占位 — Phase 3 第二阶段实现完整推理管线
-  // 当前返回模型元信息作为验证
-  auto n_ctx = llama_n_ctx(ctx);
-  char desc_buf[256] = {0};
-  llama_model_desc(model, desc_buf, sizeof(desc_buf));
+  // 1. Tokenize prompt
+  int n_prompt_tokens = llama_tokenize(vocab, prompt.c_str(),
+    static_cast<int>(prompt.size()), nullptr, 0, true, false);
 
-  std::ostringstream result;
-  result << "{"
-         << "\"model\": \"" << desc_buf << "\", "
-         << "\"n_ctx\": " << n_ctx
-         << "}";
-  return result.str();
+  if (n_prompt_tokens <= 0) {
+    return Status::Error(ErrorCode::kEngineFailed, "tokenize failed");
+  }
+
+  std::vector<llama_token> prompt_tokens(n_prompt_tokens);
+  int n_tok = llama_tokenize(vocab, prompt.c_str(),
+    static_cast<int>(prompt.size()),
+    prompt_tokens.data(), n_prompt_tokens, true, false);
+
+  if (n_tok < 0) {
+    return Status::Error(ErrorCode::kEngineFailed, "tokenize failed (2)");
+  }
+  prompt_tokens.resize(n_tok);
+
+  // 2. 创建采样器链 (greedy 解码)
+  auto* sampler = llama_sampler_chain_init(llama_sampler_chain_default_params());
+  llama_sampler_chain_add(sampler, llama_sampler_init_greedy());
+
+  // 3. 逐 token 生成
+  std::ostringstream output;
+  int n_predict = params.n_predict;
+  int n_consumed = 0;
+
+  // 初始化 batch
+  auto batch = llama_batch_get_one(prompt_tokens.data(),
+    static_cast<int32_t>(prompt_tokens.size()));
+
+  while (n_consumed < n_predict) {
+    // 解码
+    if (llama_decode(ctx, batch) != 0) {
+      llama_sampler_free(sampler);
+      return Status::Error(ErrorCode::kEngineFailed, "llama_decode failed");
+    }
+
+    // 采样下一个 token
+    llama_token new_token = llama_sampler_sample(sampler, ctx, -1);
+    if (llama_vocab_is_eog(vocab, new_token)) break;  // EOS
+
+    // Token → 文本
+    char buf[16] = {0};
+    int n = llama_token_to_piece(vocab, new_token, buf, sizeof(buf), 0, false);
+    if (n > 0) {
+      std::string piece(buf, static_cast<size_t>(n));
+      output << piece;
+      if (on_token) on_token(piece);
+    }
+
+    // 准备下一步
+    n_consumed++;
+    batch = llama_batch_get_one(&new_token, 1);
+  }
+
+  llama_sampler_free(sampler);
+  return output.str();
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -134,7 +174,7 @@ auto ExpertLoader::infer(const std::string& prompt,
 // ═══════════════════════════════════════════════════════════════════
 
 auto ExpertLoader::is_loaded() const noexcept -> bool {
-  return handle_ != nullptr && handle_->loaded;
+  return handle_ != nullptr && handle_->model != nullptr;
 }
 
 auto ExpertLoader::model_path() const noexcept -> const std::string& {
