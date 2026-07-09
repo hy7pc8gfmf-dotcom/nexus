@@ -17,20 +17,15 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: 17
 
-      - shell: pwsh
-        run: |
-          # Single step: setup env + configure + build
-          $ErrorActionPreference = 'Stop'
+      - name: Configure
+        run: cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -T host=x64 -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DFETCHCONTENT_FULLY_DISCONNECTED=OFF
 
-          # Find VS via vswhere
-          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          $vsPath = & $vswhere -latest -property installationPath
-          $vcvars = "$vsPath\VC\Auxiliary\Build\vcvars64.bat"
-          Write-Output "VS: $vsPath"
-          Write-Output "vcvars: $vcvars"
+      - name: Build
+        run: cmake --build build --config Release -j 2>&1
 
-          # Run vcvars and get environment
-          cmd /c "call `"$vcvars`" >nul 2>nul && cmake -B build -S . -G Ninja -DCMAKE_C_COMPILER=cl.exe -DCMAKE_CXX_COMPILER=cl.exe -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DFETCHCONTENT_FULLY_DISCONNECTED=OFF && cmake --build build -j" 2>&1
-          if ($LASTEXITCODE -ne 0) { throw "Build failed" }
-          dir build\*.exe -Recurse | Select-Object Name, Length
+      - name: List EXEs
+        run: dir build\bin\Release\*.exe /b
