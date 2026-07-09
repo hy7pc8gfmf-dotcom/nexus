@@ -123,6 +123,7 @@ if(WIN32)
   add_subdirectory(src/psyche)
   add_subdirectory(src/bridge)
   add_subdirectory(src/coordinator)
+  add_subdirectory(src/quantum)
 else()
   # Linux: 仅构建跨平台组件
   add_subdirectory(src/env_checker)

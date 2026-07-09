@@ -34,6 +34,8 @@
 #include "engines/temporal_kg_engine.h"
 #include "engines/ethical_evaluation_engine.h"
 #include "engines/paper_generation_engine.h"
+#include "engines/bimcmc_engine.h"
+#include "engines/hybrid_reasoner_engine.h"
 
 namespace fs = std::filesystem;
 
@@ -111,6 +113,14 @@ static auto register_all_engines(nexus::utils::Logger* logger,
   registry.register_engine(
     std::make_unique<nexus::algo::engines::PaperGenerationEngine>());
   NEXUS_LOG(logger, info, "注册引擎: paper_generation");
+
+  registry.register_engine(
+    std::make_unique<nexus::algo::engines::BiMcmcEngine>());
+  NEXUS_LOG(logger, info, "注册引擎: bimcmc_dual");
+
+  registry.register_engine(
+    std::make_unique<nexus::algo::engines::HybridReasonerEngine>());
+  NEXUS_LOG(logger, info, "注册引擎: hybrid_reasoner");
 
   // ── 初始化所有引擎 ──
   auto init_status = registry.initialize_all();
@@ -262,7 +272,7 @@ auto main(int argc, char* argv[]) -> int {
 
   auto details = nlohmann::json::object();
   details["total_engines"]    = registry.count();
-  details["implemented"]      = 10;
+  details["implemented"]      = 12;
   details["engines"]          = engine_list;
   state["details"] = details;
 
