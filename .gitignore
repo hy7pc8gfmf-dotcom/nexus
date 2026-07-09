@@ -11,7 +11,7 @@ build/
 *.exe
 __pycache__/
 *.pyc
-nexus/
+/nexus/
 .nexus/
 _build_log.txt
 _build_temp.bat
