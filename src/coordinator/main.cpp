@@ -63,6 +63,7 @@ struct ComponentDef {
   int startup_timeout_ms = 30000;
   int max_restarts = 3;
   std::vector<std::string> depends_on;
+  bool is_daemon = false;  // true = 常驻进程, false = 一次性
 };
 
 struct ComponentInstance {
@@ -150,7 +151,7 @@ static auto wait_for_ready(const std::string& state_file, int timeout_ms) -> boo
                + std::chrono::milliseconds(timeout_ms);
   while (std::chrono::steady_clock::now() < deadline) {
     auto status = read_component_status(state_file);
-    if (status == "ready" || status == "running") return true;
+    if (status == "ready" || status == "running" || status == "degraded") return true;
     if (status == "error") return false;
     std::this_thread::sleep_for(200ms);
   }
@@ -169,12 +170,12 @@ static auto create_components(const std::string& data_dir)
   };
 
   return {
-    {"env",    {{"env",    "env_checker.exe", {"--output", state("env")},       state("env"),    10000, 3, {}}}},
-    {"core",   {{"core",   "core.exe",        {"--env", state("env")},          state("core"),   60000, 3, {"env"}}}},
-    {"algo",   {{"algo",   "algo.exe",        {"--env", state("env")},          state("algo"),   30000, 3, {"env"}}}},
-    {"daemon", {{"daemon", "daemon.exe",      {"--env", state("env"), "--daemon"}, state("daemon"), 15000, 3, {"env"}}}},
-    {"psyche", {{"psyche", "psyche.exe",      {"--env", state("env")},          state("psyche"), 30000, 3, {"core"}}}},
-    {"bridge", {{"bridge", "bridge.exe",      {"--env", state("env")},          state("bridge"), 30000, 3, {"core"}}}},
+    {"env",    {{"env",    "env_checker.exe", {"--output", state("env")},       state("env"),    10000, 3, {},    false}}},
+    {"core",   {{"core",   "core.exe",        {"--env", state("env"), "--skip-models"},  state("core"),   60000, 3, {"env"}, false}}},
+    {"algo",   {{"algo",   "algo.exe",        {"--env", state("env")},          state("algo"),   30000, 3, {"env"}, false}}},
+    {"daemon", {{"daemon", "daemon.exe",      {"--env", state("env"), "--daemon"}, state("daemon"), 15000, 3, {"env"}, true}}},
+    {"psyche", {{"psyche", "psyche.exe",      {"--env", state("env"), "--oneshot", "--steps", "50"}, state("psyche"), 30000, 3, {"core"}, false}}},
+    {"bridge", {{"bridge", "bridge.exe",      {"--env", state("env")},          state("bridge"), 30000, 3, {"core"}, false}}},
   };
 }
 
@@ -281,6 +282,7 @@ static void health_check_loop(
     for (auto& [name, inst] : components) {
       if (!inst.running) continue;
       if (name == "env") continue;  // env 是一次性的
+      if (!inst.def.is_daemon) continue;  // 一次性组件不监控
 
       // 检查进程存活
       bool alive = is_process_alive(inst.process_handle);
@@ -375,7 +377,8 @@ static void orchestrate_shutdown(
   for (const auto& name : shutdown_order) {
     auto& comp = components[name];
     if (!comp.running && !comp.process_handle) continue;
-    NEXUS_LOG(logger, info, "停止 {}", name);
+    if (!comp.def.is_daemon) continue;  // 一次性组件已退出, 无需关闭
+    NEXUS_LOG(logger, info, "等待停止 {}", name);
     stop_process(comp.process_handle);
     comp.running = false;
     comp.process_handle = nullptr;

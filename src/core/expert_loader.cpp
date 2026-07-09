@@ -109,18 +109,28 @@ auto ExpertLoader::infer(const std::string& prompt,
   auto* vocab  = handle_->vocab;
   auto* model  = handle_->model;
 
-  // 1. Tokenize prompt
-  int n_prompt_tokens = llama_tokenize(vocab, prompt.c_str(),
-    static_cast<int>(prompt.size()), nullptr, 0, true, false);
+  // 1. Tokenize prompt (直接分配缓冲区)
+  int max_tokens = static_cast<int>(prompt.size()) + 8;
+  std::vector<llama_token> prompt_tokens(static_cast<size_t>(max_tokens));
 
-  if (n_prompt_tokens <= 0) {
-    return Status::Error(ErrorCode::kEngineFailed, "tokenize failed");
-  }
-
-  std::vector<llama_token> prompt_tokens(n_prompt_tokens);
   int n_tok = llama_tokenize(vocab, prompt.c_str(),
     static_cast<int>(prompt.size()),
-    prompt_tokens.data(), n_prompt_tokens, true, false);
+    prompt_tokens.data(), max_tokens, false, false);
+
+  if (n_tok < 0) {
+    // 缓冲区不足, 用返回值的绝对值作为大小
+    max_tokens = -n_tok;
+    prompt_tokens.resize(static_cast<size_t>(max_tokens));
+    n_tok = llama_tokenize(vocab, prompt.c_str(),
+      static_cast<int>(prompt.size()),
+      prompt_tokens.data(), max_tokens, false, false);
+    if (n_tok < 0) {
+      return Status::Error(ErrorCode::kEngineFailed,
+        "tokenize failed: return=" + std::to_string(n_tok));
+    }
+  }
+
+  prompt_tokens.resize(static_cast<size_t>(n_tok));
 
   if (n_tok < 0) {
     return Status::Error(ErrorCode::kEngineFailed, "tokenize failed (2)");

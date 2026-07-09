@@ -133,7 +133,14 @@ auto main(int argc, char* argv[]) -> int {
         // 测试推理（元信息）
         auto test = loader.infer("describe the model");
         if (test.ok()) {
-          NEXUS_LOG(logger, info, "模型信息: {}", test.value());
+          auto result = test.value();
+          if (!result.empty()) {
+            NEXUS_LOG(logger, info, "模型输出: {}", result);
+          } else {
+            NEXUS_LOG(logger, warn, "推理结果为空");
+          }
+        } else {
+          NEXUS_LOG(logger, warn, "推理测试: {}", test.error().to_string());
         }
 
         NEXUS_LOG(logger, info, "模型加载完成 ({} MB)", model_size);
