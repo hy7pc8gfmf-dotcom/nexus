@@ -28,33 +28,11 @@ jobs:
       - name: Install Ninja
         run: choco install ninja -y --no-progress 2>&1 | tail -3
 
-      - name: Setup VS env
-        shell: pwsh
+      - name: Configure and Build
+        shell: cmd
         run: |
-          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          echo "vswhere: $vswhere"
-          if (Test-Path $vswhere) {
-            $vsPath = & $vswhere -latest -property installationPath -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64
-            echo "VS Path: $vsPath"
-            $vcvars = "$vsPath\VC\Auxiliary\Build\vcvars64.bat"
-            echo "vcvars: $vcvars"
-            if (Test-Path $vcvars) {
-              cmd /c "`"$vcvars`" >nul 2>nul && set" | ForEach-Object {
-                if ($_ -match '^(\w+)=(.*)') {
-                  Set-Item -Path "env:$($matches[1])" -Value $matches[2]
-                }
-              }
-              $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
-              if ($cl) { echo "MSVC: $($cl.Source)" } else { echo "WARNING: cl.exe not found" }
-            } else { echo "WARNING: vcvars64.bat not found" }
-          } else { echo "WARNING: vswhere not found" }
-
-      - name: Configure
-        run: cmake -B build -S . -G Ninja -DCMAKE_C_COMPILER=cl.exe -DCMAKE_CXX_COMPILER=cl.exe -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DFETCHCONTENT_FULLY_DISCONNECTED=OFF 2>&1
-
-      - name: Build
-        run: cmake --build build -j
-
-      - name: List
-        shell: pwsh
-        run: Get-ChildItem build/*.exe -Recurse | Select-Object Name, Length
+          call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+          where cl
+          cmake -B build -S . -G Ninja -DCMAKE_C_COMPILER=cl.exe -DCMAKE_CXX_COMPILER=cl.exe -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DFETCHCONTENT_FULLY_DISCONNECTED=OFF
+          cmake --build build -j
+          dir build\*.exe /s
