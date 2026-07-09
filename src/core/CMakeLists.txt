@@ -22,7 +22,8 @@ add_executable(core
   block_swapper.cpp
   meta_kernel.cpp
   experience.cpp
-  native_bridge.cpp)
+  native_bridge.cpp
+  gpu_token.cpp)
 
 target_link_libraries(core PRIVATE
   nexus_ipc
