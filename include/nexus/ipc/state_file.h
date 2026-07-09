@@ -11,13 +11,12 @@
  */
 
 #include <chrono>
+#include <cstring>
 #include <filesystem>
 #include <mutex>
 #include <string>
 
-#include <fmt/format.h>
 #include <nlohmann/json.hpp>
-#include <spdlog/spdlog.h>
 
 #include "nexus/types/status.h"
 
@@ -91,14 +90,6 @@ public:
     return fs::exists(path_);
   }
 
-  /// 获取文件最后修改时间
-  [[nodiscard]] auto last_modified() const noexcept
-      -> std::chrono::system_clock::time_point {
-    return fs::exists(path_)
-      ? fs::last_write_time(path_)
-      : std::chrono::system_clock::time_point{};
-  }
-
   /// 获取文件路径
   [[nodiscard]] auto path() const noexcept -> const std::string& { return path_; }
 
@@ -124,9 +115,18 @@ auto current_pid() -> int;
 // ═══════════════════════════════════════════════════════════════════
 
 inline auto current_iso_timestamp() -> std::string {
-  return fmt::format("{:%Y-%m-%dT%H:%M:%SZ}",
-    fmt::gmtime(std::chrono::system_clock::to_time_t(
-      std::chrono::system_clock::now())));
+  using namespace std::chrono;
+  auto now = system_clock::now();
+  auto tt = system_clock::to_time_t(now);
+  std::tm tm{};
+#ifdef _WIN32
+  gmtime_s(&tm, &tt);
+#else
+  gmtime_r(&tt, &tm);
+#endif
+  char buf[24];
+  std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", &tm);
+  return std::string(buf);
 }
 
 inline auto current_unix_time() -> double {

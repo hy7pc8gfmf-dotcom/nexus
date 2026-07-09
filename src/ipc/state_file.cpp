@@ -85,7 +85,7 @@ auto StateFileWriter::write(const nlohmann::json& data) noexcept -> Status {
   // 1. 获取文件锁
   FileLock file_lock;
   if (!file_lock.acquire(path_ + ".lock", 1000)) {
-    return Status::Error(ErrorCode::kFileLockBusy,
+    return Status::Error(nexus::ErrorCode::kFileLockBusy,
       "file lock timeout: " + path_);
   }
 
@@ -98,13 +98,13 @@ auto StateFileWriter::write(const nlohmann::json& data) noexcept -> Status {
     {
       std::ofstream ofs(tmp_path, std::ios::binary);
       if (!ofs.is_open()) {
-        return Status::Error(ErrorCode::kIoError,
+        return Status::Error(nexus::ErrorCode::kIoError,
           "cannot open temp file: " + tmp_path);
       }
       ofs.write(json_str.data(), static_cast<std::streamsize>(json_str.size()));
       ofs.flush();
       if (!ofs.good()) {
-        return Status::Error(ErrorCode::kIoError,
+        return Status::Error(nexus::ErrorCode::kIoError,
           "write failed: " + tmp_path);
       }
     }
@@ -114,13 +114,13 @@ auto StateFileWriter::write(const nlohmann::json& data) noexcept -> Status {
                      MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
       // 重命名失败，清理临时文件
       std::remove(tmp_path.c_str());
-      return Status::Error(ErrorCode::kIoError,
+      return Status::Error(nexus::ErrorCode::kIoError,
         "atomic rename failed: " + path_);
     }
 
     return Status::Ok();
   } catch (const std::exception& e) {
-    return Status::Error(ErrorCode::kInternal, e.what());
+    return Status::Error(nexus::ErrorCode::kInternal, e.what());
   }
 }
 
@@ -137,7 +137,7 @@ auto StateFileReader::read(int retries, int retry_delay_ms) noexcept
         std::this_thread::sleep_for(std::chrono::milliseconds(retry_delay_ms));
         continue;
       }
-      return Status::Error(ErrorCode::kFileNotFound,
+      return Status::Error(nexus::ErrorCode::kFileNotFound,
         "file not found: " + path_);
     }
 
@@ -149,26 +149,26 @@ auto StateFileReader::read(int retries, int retry_delay_ms) noexcept
           std::this_thread::sleep_for(std::chrono::milliseconds(retry_delay_ms));
           continue;
         }
-        return Status::Error(ErrorCode::kIoError,
+        return Status::Error(nexus::ErrorCode::kIoError,
           "cannot open file: " + path_);
       }
 
       nlohmann::json data;
       ifs >> data;
       return data;
-    } catch (const nlohmann::json::parse_error& e) {
+    } catch (const nlohmann::parse_error& e) {
       if (i < retries) {
         std::this_thread::sleep_for(std::chrono::milliseconds(retry_delay_ms));
         continue;
       }
-      return Status::Error(ErrorCode::kJsonParseError,
+      return Status::Error(nexus::ErrorCode::kJsonParseError,
         std::string(e.what()) + " [" + path_ + "]");
     } catch (const std::exception& e) {
-      return Status::Error(ErrorCode::kInternal, e.what());
+      return Status::Error(nexus::ErrorCode::kInternal, e.what());
     }
   }
 
-  return Status::Error(ErrorCode::kInternal, "unreachable");
+  return Status::Error(nexus::ErrorCode::kInternal, "unreachable");
 }
 
 // ═══════════════════════════════════════════════════════════════════

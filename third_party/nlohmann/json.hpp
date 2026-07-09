@@ -26,6 +26,7 @@
 #include <initializer_list>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -76,6 +77,15 @@ public:
   json(const char* v) : type_(json_type::string_), str_val_(v) {}
   json(std::string v) noexcept : type_(json_type::string_), str_val_(std::move(v)) {}
 
+  // vector<string> → JSON 数组
+  json(const std::vector<std::string>& v) {
+    type_ = json_type::array_;
+    arr_val_.reserve(v.size());
+    for (const auto& s : v) {
+      arr_val_.emplace_back(s);
+    }
+  }
+
   // initializer_list 构造（支持嵌套的 {key, value} 对 或 数组元素）
   json(std::initializer_list<json> list) {
     bool is_object = true;
@@ -98,7 +108,7 @@ public:
       type_ = json_type::null_;
     } else if (is_object) {
       type_ = json_type::object_;
-      obj_val_ = map_type();
+      obj_val_ = std::make_shared<map_type>();
       for (const auto& item : list) {
         if (item.is_array() && item.size() == 2) {
           auto key = item[0].get<std::string>();
@@ -122,7 +132,7 @@ public:
   static json object() {
     json j;
     j.type_ = json_type::object_;
-    j.obj_val_ = map_type();
+    j.obj_val_ = std::make_shared<map_type>();
     return j;
   }
 
@@ -156,7 +166,7 @@ public:
   json& operator[](const std::string& key) {
     if (type_ != json_type::object_) {
       type_ = json_type::object_;
-      obj_val_ = map_type();
+      obj_val_ = std::make_shared<map_type>();
     }
     return (*obj_val_)[key];
   }
@@ -166,10 +176,10 @@ public:
       type_ = json_type::array_;
       arr_val_ = std::vector<json>();
     }
-    if (idx >= arr_val_->size()) {
-      arr_val_->resize(idx + 1);
+    if (idx >= arr_val_.size()) {
+      arr_val_.resize(idx + 1);
     }
-    return (*arr_val_)[idx];
+    return arr_val_[idx];
   }
 
   const json& operator[](const std::string& key) const {
@@ -193,8 +203,8 @@ public:
 
   const json& at(size_t idx) const {
     if (type_ != json_type::array_) throw type_error("not an array");
-    if (idx >= arr_val_->size()) throw type_error("index out of range");
-    return (*arr_val_)[idx];
+    if (idx >= arr_val_.size()) throw type_error("index out of range");
+    return arr_val_[idx];
   }
 
   json& at(size_t idx) {
@@ -212,8 +222,40 @@ public:
   }
 
   // ── 类型转换 ──
+  // 使用 if constexpr 模板，避免 MSVC 的显式特化问题
   template<typename T>
-  T get() const;
+  T get() const {
+    if constexpr (std::is_same_v<T, std::string>) {
+      if (type_ != json_type::string_) throw type_error("not a string");
+      return str_val_;
+    } else if constexpr (std::is_same_v<T, int>) {
+      if (type_ == json_type::int_) return static_cast<int>(int_val_);
+      if (type_ == json_type::uint_) return static_cast<int>(uint_val_);
+      if (type_ == json_type::double_) return static_cast<int>(double_val_);
+      throw type_error("not a number");
+    } else if constexpr (std::is_same_v<T, unsigned>) {
+      if (type_ == json_type::uint_) return static_cast<unsigned>(uint_val_);
+      if (type_ == json_type::int_) return static_cast<unsigned>(int_val_);
+      throw type_error("not an unsigned number");
+    } else if constexpr (std::is_same_v<T, int64_t>) {
+      if (type_ == json_type::int_) return int_val_;
+      if (type_ == json_type::uint_) return static_cast<int64_t>(uint_val_);
+      throw type_error("not an integer");
+    } else if constexpr (std::is_same_v<T, uint64_t>) {
+      if (type_ == json_type::uint_) return uint_val_;
+      throw type_error("not an unsigned integer");
+    } else if constexpr (std::is_same_v<T, double>) {
+      if (type_ == json_type::double_) return double_val_;
+      if (type_ == json_type::int_) return static_cast<double>(int_val_);
+      if (type_ == json_type::uint_) return static_cast<double>(uint_val_);
+      throw type_error("not a number");
+    } else if constexpr (std::is_same_v<T, bool>) {
+      if (type_ != json_type::bool_) throw type_error("not a boolean");
+      return bool_val_;
+    } else {
+      throw type_error("unsupported type for get<T>");
+    }
+  }
 
   // ── 序列化 ──
   std::string dump(int indent = -1) const {
@@ -222,9 +264,18 @@ public:
     return oss.str();
   }
 
+  // ── 数组操作 ──
+  void push_back(const json& value) {
+    if (type_ != json_type::array_) {
+      type_ = json_type::array_;
+      arr_val_.clear();
+    }
+    arr_val_.push_back(value);
+  }
+
   // ── 大小 ──
   size_t size() const {
-    if (type_ == json_type::array_) return arr_val_ ? arr_val_->size() : 0;
+    if (type_ == json_type::array_) return arr_val_.size();
     if (type_ == json_type::object_) return obj_val_ ? obj_val_->size() : 0;
     return 0;
   }
@@ -239,41 +290,19 @@ public:
 
   iterator begin() {
     if (type_ != json_type::array_) throw type_error("not an array");
-    return arr_val_->begin();
+    return arr_val_.begin();
   }
   iterator end() {
     if (type_ != json_type::array_) throw type_error("not an array");
-    return arr_val_->end();
+    return arr_val_.end();
   }
   const_iterator begin() const {
     if (type_ != json_type::array_) throw type_error("not an array");
-    return arr_val_->begin();
+    return arr_val_.begin();
   }
   const_iterator end() const {
     if (type_ != json_type::array_) throw type_error("not an array");
-    return arr_val_->end();
-  }
-
-  // ── 对象迭代（用于 range-for） ──
-  struct object_entry {
-    std::string key;
-    json value;
-  };
-
-  struct object_iterator {
-    map_type::const_iterator it_;
-    object_iterator(map_type::const_iterator it) : it_(it) {}
-    object_entry operator*() const { return {it_->first, it_->second}; }
-    bool operator!=(const object_iterator& o) const { return it_ != o.it_; }
-    void operator++() { ++it_; }
-  };
-
-  object_iterator obegin() const {
-    if (type_ != json_type::object_) throw type_error("not an object");
-    return object_iterator(obj_val_->begin());
-  }
-  object_iterator oend() const {
-    return object_iterator(obj_val_->end());
+    return arr_val_.end();
   }
 
 private:
@@ -335,7 +364,7 @@ private:
     if (pos < s.size() && s[pos] == ']') { ++pos; return arr; }
 
     while (true) {
-      arr.arr_val_->push_back(parse_value(s, pos));
+      arr.arr_val_.push_back(parse_value(s, pos));
       skip_ws(s, pos);
       if (pos < s.size() && s[pos] == ',') { ++pos; continue; }
       if (pos < s.size() && s[pos] == ']') { ++pos; break; }
@@ -455,15 +484,15 @@ private:
         os << '"'; break;
       case json_type::array_:
         os << '[';
-        if (arr_val_) {
+        if (!arr_val_.empty()) {
           bool first = true;
-          for (const auto& val : *arr_val_) {
+          for (const auto& val : arr_val_) {
             if (!first) os << ',';
             first = false;
             if (indent >= 0) os << '\n' << std::string(depth + 1, ' ');
             val.dump_impl(os, depth + 1, indent);
           }
-          if (indent >= 0 && !arr_val_->empty())
+          if (indent >= 0 && !arr_val_.empty())
             os << '\n' << std::string(depth, ' ');
         }
         os << ']'; break;
@@ -486,42 +515,6 @@ private:
     }
   }
 };
-
-// ── 特化 get<T> ──
-template<> inline std::string json::get<std::string>() const {
-  if (type_ != json_type::string_) throw type_error("not a string");
-  return str_val_;
-}
-template<> inline int json::get<int>() const {
-  if (type_ == json_type::int_) return static_cast<int>(int_val_);
-  if (type_ == json_type::uint_) return static_cast<int>(uint_val_);
-  if (type_ == json_type::double_) return static_cast<int>(double_val_);
-  throw type_error("not a number");
-}
-template<> inline unsigned json::get<unsigned>() const {
-  if (type_ == json_type::uint_) return static_cast<unsigned>(uint_val_);
-  if (type_ == json_type::int_) return static_cast<unsigned>(int_val_);
-  throw type_error("not an unsigned number");
-}
-template<> inline int64_t json::get<int64_t>() const {
-  if (type_ == json_type::int_) return int_val_;
-  if (type_ == json_type::uint_) return static_cast<int64_t>(uint_val_);
-  throw type_error("not an integer");
-}
-template<> inline uint64_t json::get<uint64_t>() const {
-  if (type_ == json_type::uint_) return uint_val_;
-  throw type_error("not an unsigned integer");
-}
-template<> inline double json::get<double>() const {
-  if (type_ == json_type::double_) return double_val_;
-  if (type_ == json_type::int_) return static_cast<double>(int_val_);
-  if (type_ == json_type::uint_) return static_cast<double>(uint_val_);
-  throw type_error("not a number");
-}
-template<> inline bool json::get<bool>() const {
-  if (type_ != json_type::bool_) throw type_error("not a boolean");
-  return bool_val_;
-}
 
 // ── >> 运算符 ──
 inline std::istream& operator>>(std::istream& is, json& j) {

@@ -18,9 +18,11 @@
 #include "nexus/types/component_state.h"
 #include "nexus/utils/logger.h"
 
-// ── CUDA Runtime API ──
+// ── CUDA Runtime API (可选) ──
+#ifdef NEXUS_CUDA_ENABLED
 #include <cuda_runtime.h>
 #include <driver_types.h>
+#endif
 
 namespace fs = std::filesystem;
 
@@ -89,6 +91,7 @@ struct GpuInfo {
 static auto detect_gpu() -> GpuInfo {
   GpuInfo info;
 
+#ifdef NEXUS_CUDA_ENABLED
   // 获取驱动版本
   cudaError_t err = cudaDriverGetVersion(&info.driver_version);
   if (err != cudaSuccess) return info;  // CUDA 不可用
@@ -111,12 +114,14 @@ static auto detect_gpu() -> GpuInfo {
   info.vram_total = prop.totalGlobalMem;
 
   // 查询当前可用 VRAM
-  err = cudaMemGetInfo(&info.vram_free, &info.vram_total);
+  size_t vram_total = 0;
+  err = cudaMemGetInfo(&info.vram_free, &vram_total);
   if (err == cudaSuccess) {
-    info.vram_total = info.vram_total;  // cudaMemGetInfo 也会返回总量
-  } else {
-    info.vram_free = info.vram_total;  // fallback: 假设全部可用
+    info.vram_total = vram_total;
   }
+#else
+  (void)0;  // CUDA 未启用，保持 info.available=false
+#endif
 
   return info;
 }
@@ -233,14 +238,33 @@ static auto calculate_vram_budget(const GpuInfo& gpu) -> VramBudget {
 // ═══════════════════════════════════════════════════════════════════
 
 static auto default_routes() -> nlohmann::json {
-  return nlohmann::json::array({
-    {{"task_type", "reasoning"},  {"model_id", "qwythos_9b"},     {"priority", 1}},
-    {{"task_type", "quick_local"},{"model_id", "grm2"},          {"priority", 2}},
-    {{"task_type", "translate"},  {"model_id", "hy_mt2"},        {"priority", 3}},
-    {{"task_type", "vision"},     {"model_id", "minicpm_v"},     {"priority", 4}},
-    {{"task_type", "dialectic"},  {"model_id", "qwythos_9b"},    {"priority", 1}},
-    {{"task_type", "debug"},      {"model_id", "qwythos_9b"},    {"priority", 2}},
-  });
+  auto routes = nlohmann::json::array();
+
+  auto r1 = nlohmann::json::object();
+  r1["task_type"] = "reasoning";  r1["model_id"] = "qwythos_9b";  r1["priority"] = 1;
+  routes.push_back(r1);
+
+  auto r2 = nlohmann::json::object();
+  r2["task_type"] = "quick_local"; r2["model_id"] = "grm2";  r2["priority"] = 2;
+  routes.push_back(r2);
+
+  auto r3 = nlohmann::json::object();
+  r3["task_type"] = "translate"; r3["model_id"] = "hy_mt2"; r3["priority"] = 3;
+  routes.push_back(r3);
+
+  auto r4 = nlohmann::json::object();
+  r4["task_type"] = "vision"; r4["model_id"] = "minicpm_v"; r4["priority"] = 4;
+  routes.push_back(r4);
+
+  auto r5 = nlohmann::json::object();
+  r5["task_type"] = "dialectic"; r5["model_id"] = "qwythos_9b"; r5["priority"] = 1;
+  routes.push_back(r5);
+
+  auto r6 = nlohmann::json::object();
+  r6["task_type"] = "debug"; r6["model_id"] = "qwythos_9b"; r6["priority"] = 2;
+  routes.push_back(r6);
+
+  return routes;
 }
 
 // ═══════════════════════════════════════════════════════════════════

@@ -3,66 +3,173 @@
 
 /**
  * @file logger.h
- * @brief 统一日志初始化
+ * @brief 统一日志 — 自包含实现，无外部依赖
  *
- * 使用 spdlog，每个组件有独立 logger。
- * 日志文件按天轮转，保留 7 天。
+ * 输出到 stderr，格式: [timestamp] [component] [level] message
+ * 日志文件: 同时写入 {log_dir}/{component}.log (追加模式)
+ *
+ * 当 vcpkg 可用时，可切换回 spdlog 以获得彩色输出、文件轮转等特性。
+ * 当前实现为最小可行版本。
  */
 
-#include <memory>
+#include <chrono>
+#include <cstdio>
+#include <ctime>
+#include <filesystem>
+#include <format>
+#include <fstream>
+#include <mutex>
 #include <string>
-
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/sinks/rotating_file_sink.h>
+#include <string_view>
 
 namespace nexus::utils {
 
-/// 初始化组件日志
-/// @param component 组件名称（如 "core", "daemon"）
-/// @param log_dir   日志目录（如 ".nexus/logs"）
-/// @param level     日志级别（如 "info", "debug"）
-inline auto init_logger(
-    const std::string& component,
-    const std::string& log_dir,
-    const std::string& level = "info") noexcept
-    -> std::shared_ptr<spdlog::logger> {
+// ═══════════════════════════════════════════════════════════════════
+// 日志级别
+// ═══════════════════════════════════════════════════════════════════
 
-  // 控制台 sink
-  auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-  console_sink->set_pattern(fmt::format(
-    "[{{}}] [{}] [%^%l%$] %v",
-    component));
+enum class LogLevel {
+  kDebug = 0,
+  kInfo  = 1,
+  kWarn  = 2,
+  kError = 3,
+};
 
-  // 文件 sink (5MB 轮转, 保留 3 个)
-  auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-    fmt::format("{}/{}.log", log_dir, component),
-    5 * 1024 * 1024,  // 5MB
-    3);
-
-  file_sink->set_pattern(fmt::format(
-    "[{{}}] [{}] [%l] %v",
-    fmt::gmtime(std::chrono::system_clock::now())));
-
-  // 创建 logger
-  auto logger = std::make_shared<spdlog::logger>(
-    "nexus." + component,
-    spdlog::sinks_init_list{console_sink, file_sink});
-
-  // 设置日志级别
-  if (level == "debug")       logger->set_level(spdlog::level::debug);
-  else if (level == "info")   logger->set_level(spdlog::level::info);
-  else if (level == "warn")   logger->set_level(spdlog::level::warn);
-  else if (level == "error")  logger->set_level(spdlog::level::err);
-  else                        logger->set_level(spdlog::level::info);
-
-  spdlog::register_logger(logger);
-  return logger;
+constexpr auto log_level_to_string(LogLevel level) noexcept -> const char* {
+  switch (level) {
+    case LogLevel::kDebug: return "debug";
+    case LogLevel::kInfo:  return "info";
+    case LogLevel::kWarn:  return "warn";
+    case LogLevel::kError: return "error";
+  }
+  return "unknown";
 }
 
-/// 快捷宏 — 替代 NEXUS_LOG(info, "message {}", arg) 形式
-#define NEXUS_LOG(logger, level, ...) \
-  (logger)->level(__VA_ARGS__)
+constexpr auto parse_log_level(const std::string& s) noexcept -> LogLevel {
+  if (s == "debug") return LogLevel::kDebug;
+  if (s == "info")  return LogLevel::kInfo;
+  if (s == "warn")  return LogLevel::kWarn;
+  if (s == "error") return LogLevel::kError;
+  return LogLevel::kInfo;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Logger — 简单日志器
+// ═══════════════════════════════════════════════════════════════════
+
+class Logger {
+public:
+  Logger(std::string component, std::string log_dir = "",
+         LogLevel level = LogLevel::kInfo) noexcept
+    : component_(std::move(component))
+    , level_(level) {
+
+    // 尝试打开日志文件
+    if (!log_dir.empty()) {
+      std::error_code ec;
+      std::filesystem::create_directories(log_dir, ec);
+      if (!ec) {
+        log_file_.open(
+          log_dir + "/" + component_ + ".log",
+          std::ios::app);
+      }
+    }
+  }
+
+  ~Logger() noexcept {
+    if (log_file_.is_open()) log_file_.close();
+  }
+
+  Logger(const Logger&) = delete;
+  Logger& operator=(const Logger&) = delete;
+  Logger(Logger&&) noexcept = default;
+  Logger& operator=(Logger&&) noexcept = default;
+
+  // ── 核心日志方法 ──
+  template<typename... Args>
+  void debug(std::format_string<Args...> fmt, Args&&... args) {
+    write(LogLevel::kDebug, std::format(fmt, std::forward<Args>(args)...));
+  }
+
+  template<typename... Args>
+  void info(std::format_string<Args...> fmt, Args&&... args) {
+    write(LogLevel::kInfo, std::format(fmt, std::forward<Args>(args)...));
+  }
+
+  template<typename... Args>
+  void warn(std::format_string<Args...> fmt, Args&&... args) {
+    write(LogLevel::kWarn, std::format(fmt, std::forward<Args>(args)...));
+  }
+
+  template<typename... Args>
+  void error(std::format_string<Args...> fmt, Args&&... args) {
+    write(LogLevel::kError, std::format(fmt, std::forward<Args>(args)...));
+  }
+
+  // ── 直接写入字符串（已格式化的） ──
+  void write(LogLevel level, const std::string& message) noexcept {
+    if (level < level_) return;
+
+    auto timestamp = current_timestamp();
+    auto level_str = log_level_to_string(level);
+
+    auto line = std::format("[{}] [{}] [{}] {}\n",
+      timestamp, component_, level_str, message);
+
+    // stderr
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::fputs(line.c_str(), stderr);
+
+    // 日志文件
+    if (log_file_.is_open()) {
+      log_file_ << line;
+      log_file_.flush();
+    }
+  }
+
+private:
+  std::string component_;
+  LogLevel level_;
+  std::mutex mutex_;
+  std::ofstream log_file_;
+
+  static auto current_timestamp() -> std::string {
+    using namespace std::chrono;
+    auto now = system_clock::now();
+    auto tt = system_clock::to_time_t(now);
+    auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
+
+    std::tm tm;
+#ifdef _WIN32
+    gmtime_s(&tm, &tt);
+#else
+    gmtime_r(&tt, &tm);
+#endif
+    return std::format("{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}.{:03d}",
+      tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+      tm.tm_hour, tm.tm_min, tm.tm_sec,
+      static_cast<int>(ms.count()));
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// 工厂函数
+// ═══════════════════════════════════════════════════════════════════
+
+inline auto init_logger(
+    const std::string& component,
+    const std::string& log_dir = "",
+    const std::string& level = "info") noexcept
+    -> std::unique_ptr<Logger> {
+  return std::make_unique<Logger>(
+    component, log_dir, parse_log_level(level));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 便捷宏
+// ═══════════════════════════════════════════════════════════════════
+
+#define NEXUS_LOG(logger, level, ...)  (logger)->level(__VA_ARGS__)
 
 }  // namespace nexus::utils
 

@@ -16,6 +16,7 @@
  */
 
 #include "nexus/ipc/mmap_ringbuf.h"
+#include "nexus/ipc/state_file.h"
 
 #include <atomic>
 #include <cstring>
@@ -81,7 +82,7 @@ auto MmapRingBuffer::create_or_open(const fs::path& path) noexcept
     std::error_code ec;
     fs::create_directories(dir, ec);
     if (ec) {
-      return Status::Error(ErrorCode::kIoError,
+      return Status::Error(nexus::ErrorCode::kIoError,
         "cannot create directory: " + dir.string());
     }
   }
@@ -97,7 +98,7 @@ auto MmapRingBuffer::create_or_open(const fs::path& path) noexcept
       FILE_ATTRIBUTE_NORMAL,
       nullptr);
     if (hFile == INVALID_HANDLE_VALUE) {
-      return Status::Error(ErrorCode::kIoError,
+      return Status::Error(nexus::ErrorCode::kIoError,
         "CreateFile failed: " + path.string());
     }
 
@@ -106,58 +107,50 @@ auto MmapRingBuffer::create_or_open(const fs::path& path) noexcept
     size.QuadPart = static_cast<LONGLONG>(kFieldSize);
     if (!::SetFilePointerEx(hFile, size, nullptr, FILE_BEGIN)) {
       ::CloseHandle(hFile);
-      return Status::Error(ErrorCode::kIoError, "SetFilePointerEx failed");
+      return Status::Error(nexus::ErrorCode::kIoError, "SetFilePointerEx failed");
     }
     if (!::SetEndOfFile(hFile)) {
       ::CloseHandle(hFile);
-      return Status::Error(ErrorCode::kIoError, "SetEndOfFile failed");
+      return Status::Error(nexus::ErrorCode::kIoError, "SetEndOfFile failed");
     }
     ::CloseHandle(hFile);
   }
 
-  // 3. 打开文件映射 (FILE_MAP_ALL_ACCESS 允许读写)
+  // 3. 打开物理文件并创建文件映射（文件后备，数据持久化到磁盘）
+  HANDLE hFile = ::CreateFileW(
+    path.c_str(),
+    GENERIC_READ | GENERIC_WRITE,
+    FILE_SHARE_READ | FILE_SHARE_WRITE,
+    nullptr,
+    OPEN_EXISTING,
+    FILE_ATTRIBUTE_NORMAL,
+    nullptr);
+  if (hFile == INVALID_HANDLE_VALUE) {
+    return Status::Error(nexus::ErrorCode::kIoError,
+      "CreateFile (mapping) failed: " + path.string());
+  }
+
   HANDLE hMapping = ::CreateFileMappingW(
-    INVALID_HANDLE_VALUE,   // 使用系统分页文件（跨进程共享）
+    hFile,          // 物理文件句柄（数据持久化到磁盘）
     nullptr,
     PAGE_READWRITE,
     0,
     static_cast<DWORD>(kFieldSize),
-    (L"nexus_psi_field_" + path.filename().wstring()).c_str());
+    nullptr);       // 匿名映射（跨进程通过文件名共享）
 
   if (!hMapping) {
-    // 如果命名映射已存在，打开它
-    hMapping = ::OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE,
-      (L"nexus_psi_field_" + path.filename().wstring()).c_str());
-    if (!hMapping) {
-      // Fallback: 使用文件映射（非命名）
-      HANDLE hFile = ::CreateFileW(
-        path.c_str(),
-        GENERIC_READ | GENERIC_WRITE,
-        FILE_SHARE_READ | FILE_SHARE_WRITE,
-        nullptr,
-        OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL,
-        nullptr);
-      if (hFile == INVALID_HANDLE_VALUE) {
-        return Status::Error(ErrorCode::kIoError,
-          "CreateFile (fallback) failed: " + path.string());
-      }
-      hMapping = ::CreateFileMappingW(hFile, nullptr, PAGE_READWRITE,
-        0, static_cast<DWORD>(kFieldSize), nullptr);
-      ::CloseHandle(hFile);
-      if (!hMapping) {
-        return Status::Error(ErrorCode::kIoError,
-          "CreateFileMapping (fallback) failed");
-      }
-    }
+    ::CloseHandle(hFile);
+    return Status::Error(nexus::ErrorCode::kIoError,
+      "CreateFileMapping failed: " + path.string());
   }
 
-  // 4. 映射视图
+  // 4. 映射视图（映射后关闭句柄，文件保持打开状态直到视图关闭）
   void* view = ::MapViewOfFile(hMapping, FILE_MAP_ALL_ACCESS, 0, 0, kFieldSize);
-  ::CloseHandle(hMapping);  // 映射后可以关闭句柄（视图保持引用）
+  ::CloseHandle(hMapping);
+  ::CloseHandle(hFile);  // 关闭文件句柄，映射视图保持对文件的引用
 
   if (!view) {
-    return Status::Error(ErrorCode::kIoError, "MapViewOfFile failed");
+    return Status::Error(nexus::ErrorCode::kIoError, "MapViewOfFile failed");
   }
 
   buf.mmap_ = view;
@@ -182,7 +175,7 @@ auto MmapRingBuffer::create_or_open(const fs::path& path) noexcept
 auto MmapRingBuffer::write(const std::string& content,
                            const std::string& channel) noexcept -> Status {
   if (!mmap_) {
-    return Status::Error(ErrorCode::kInternal, "mmap not initialized");
+    return Status::Error(nexus::ErrorCode::kInternal, "mmap not initialized");
   }
   if (content.empty()) {
     return Status::Ok();  // 空内容跳过

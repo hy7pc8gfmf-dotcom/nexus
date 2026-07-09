@@ -12,3 +12,7 @@ build/
 __pycache__/
 *.pyc
 nexus/
+.nexus/
+_build_log.txt
+_build_temp.bat
+_check_cmake.bat

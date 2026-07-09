@@ -22,6 +22,7 @@
  * @endcode
  */
 
+#include <cassert>
 #include <cstdint>
 #include <string>
 #include <variant>
@@ -33,28 +34,30 @@ namespace nexus {
 // 错误码
 // ═══════════════════════════════════════════════════════════════════
 
-enum class ErrorCode : int32_t {
-  kOk                   = 0,
-  kEnvNotFound          = 1,   // env.json 不存在
-  kEnvInvalid           = 2,   // env.json 格式错误
-  kGpuUnavailable       = 3,   // GPU 不可用
-  kVramInsufficient     = 4,   // VRAM 不足
-  kModelNotFound        = 5,   // 模型文件不存在
-  kModelLoadFailed      = 6,   // 模型加载失败
-  kEngineFailed         = 7,   // 算法引擎执行失败
-  kIpcTimeout           = 8,   // 文件锁/等待超时
-  kComponentCrashed     = 9,   // 子进程崩溃
-  kInvalidConfig        = 10,  // 配置错误
-  kFileNotFound         = 11,  // 文件不存在
-  kJsonParseError       = 12,  // JSON 解析错误
-  kFileLockBusy         = 13,  // 文件锁被占用
-  kNotSupported         = 14,  // 不支持的操作
-  kOutOfMemory          = 15,  // 内存不足
-  kInternal             = 99,  // 内部错误
+/// 错误码（使用 struct 包装 constexpr 以兼容 MSVC 14.44+ 的 enum class 限定名解析）
+struct ErrorCode {
+  static constexpr int32_t kOk              = 0;
+  static constexpr int32_t kEnvNotFound     = 1;   // env.json 不存在
+  static constexpr int32_t kEnvInvalid      = 2;   // env.json 格式错误
+  static constexpr int32_t kGpuUnavailable  = 3;   // GPU 不可用
+  static constexpr int32_t kVramInsufficient= 4;   // VRAM 不足
+  static constexpr int32_t kModelNotFound   = 5;   // 模型文件不存在
+  static constexpr int32_t kModelLoadFailed = 6;   // 模型加载失败
+  static constexpr int32_t kEngineFailed    = 7;   // 算法引擎执行失败
+  static constexpr int32_t kIpcTimeout      = 8;   // 文件锁/等待超时
+  static constexpr int32_t kComponentCrashed= 9;   // 子进程崩溃
+  static constexpr int32_t kInvalidConfig   = 10;  // 配置错误
+  static constexpr int32_t kFileNotFound    = 11;  // 文件不存在
+  static constexpr int32_t kJsonParseError  = 12;  // JSON 解析错误
+  static constexpr int32_t kFileLockBusy    = 13;  // 文件锁被占用
+  static constexpr int32_t kNotSupported    = 14;  // 不支持的操作
+  static constexpr int32_t kOutOfMemory     = 15;  // 内存不足
+  static constexpr int32_t kIoError         = 16;  // I/O 错误
+  static constexpr int32_t kInternal        = 99;  // 内部错误
 };
 
 /// 错误码转可读字符串
-constexpr auto error_code_to_string(ErrorCode code) noexcept -> const char* {
+constexpr auto error_code_to_string(int32_t code) noexcept -> const char* {
   switch (code) {
     case ErrorCode::kOk:               return "OK";
     case ErrorCode::kEnvNotFound:      return "ENV_NOT_FOUND";
@@ -72,6 +75,7 @@ constexpr auto error_code_to_string(ErrorCode code) noexcept -> const char* {
     case ErrorCode::kFileLockBusy:     return "FILE_LOCK_BUSY";
     case ErrorCode::kNotSupported:     return "NOT_SUPPORTED";
     case ErrorCode::kOutOfMemory:      return "OUT_OF_MEMORY";
+    case ErrorCode::kIoError:          return "IO_ERROR";
     case ErrorCode::kInternal:         return "INTERNAL_ERROR";
   }
   return "UNKNOWN";
@@ -82,14 +86,14 @@ constexpr auto error_code_to_string(ErrorCode code) noexcept -> const char* {
 // ═══════════════════════════════════════════════════════════════════
 
 struct Status {
-  ErrorCode code{ErrorCode::kOk};
+  int32_t code{ErrorCode::kOk};
   std::string message;
 
   static auto Ok() noexcept -> Status {
     return Status{ErrorCode::kOk, ""};
   }
 
-  static auto Error(ErrorCode code, std::string msg = "") noexcept -> Status {
+  static auto Error(int32_t code, std::string msg = "") noexcept -> Status {
     return Status{code, std::move(msg)};
   }
 
@@ -112,8 +116,8 @@ class Result {
   std::variant<T, Status> data_;
 
 public:
-  explicit Result(T value) noexcept : data_(std::move(value)) {}
-  explicit Result(Status error) noexcept : data_(std::move(error)) {
+  Result(T value) noexcept : data_(std::move(value)) {}
+  Result(Status error) noexcept : data_(std::move(error)) {
     assert(!error.ok());  // NOLINT
   }
 

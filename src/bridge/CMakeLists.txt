@@ -1,9 +1,6 @@
 add_executable(bridge main.cpp)
-target_link_libraries(bridge PRIVATE
-  nexus_ipc
-  nexus_types
-  fmt::fmt
-  nlohmann_json::nlohmann_json
-  spdlog::spdlog
-)
+target_link_libraries(bridge PRIVATE nexus_ipc nexus_types)
+if(NEXUS_USE_VCPKG)
+  target_link_libraries(bridge PRIVATE fmt::fmt nlohmann_json::nlohmann_json spdlog::spdlog)
+endif()
 install(TARGETS bridge RUNTIME DESTINATION bin)

@@ -23,7 +23,6 @@
 #include <vector>
 
 #include <nlohmann/json.hpp>
-#include <spdlog/spdlog.h>
 
 #include "nexus/types/status.h"
 

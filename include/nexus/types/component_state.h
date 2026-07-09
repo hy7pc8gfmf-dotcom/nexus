@@ -86,7 +86,7 @@ struct ComponentStateBase {
       else if (status_str == "stopped")   s.status = ComponentStatus::kStopped;
 
       return s;
-    } catch (const nlohmann::json::exception& e) {
+    } catch (const nlohmann::json_exception& e) {
       return Status::Error(ErrorCode::kJsonParseError, e.what());
     }
   }
@@ -104,15 +104,16 @@ struct EnvDetails {
   std::vector<nlohmann::json> models;
 
   [[nodiscard]] auto to_json() const -> nlohmann::json {
-    return {
-      {"gpu", {
-        {"name",        gpu_name},
-        {"vram_total_mb", vram_total_mb},
-        {"vram_free_mb",  vram_free_mb},
-        {"budget_mb",     vram_budget_mb},
-      }},
-      {"models", models},
-    };
+    auto gpu = nlohmann::json::object();
+    gpu["name"]          = gpu_name;
+    gpu["vram_total_mb"] = vram_total_mb;
+    gpu["vram_free_mb"]  = vram_free_mb;
+    gpu["budget_mb"]     = vram_budget_mb;
+
+    auto j = nlohmann::json::object();
+    j["gpu"]    = gpu;
+    j["models"] = nlohmann::json::array();
+    return j;
   }
 };
 
@@ -124,13 +125,13 @@ struct CoreDetails {
   std::vector<std::string> loaded_models;
 
   [[nodiscard]] auto to_json() const -> nlohmann::json {
-    return {
-      {"vram_used_mb",  vram_used_mb},
-      {"vram_free_mb",  vram_free_mb},
-      {"loaded_models", loaded_models},
-      {"gpu_lock_held", gpu_lock_held},
-      {"swapper_blocks", swapper_blocks},
-    };
+    auto j = nlohmann::json::object();
+    j["vram_used_mb"]   = vram_used_mb;
+    j["vram_free_mb"]   = vram_free_mb;
+    j["loaded_models"]  = loaded_models;
+    j["gpu_lock_held"]  = gpu_lock_held;
+    j["swapper_blocks"] = swapper_blocks;
+    return j;
   }
 };
 
@@ -141,12 +142,12 @@ struct DaemonDetails {
   int will_hooks_scanned = 0;
 
   [[nodiscard]] auto to_json() const -> nlohmann::json {
-    return {
-      {"uptime_seconds",      uptime_seconds},
-      {"cycle",               cycle},
-      {"psi_field_written",   psi_field_written},
-      {"will_hooks_scanned",  will_hooks_scanned},
-    };
+    auto j = nlohmann::json::object();
+    j["uptime_seconds"]     = uptime_seconds;
+    j["cycle"]              = cycle;
+    j["psi_field_written"]  = psi_field_written;
+    j["will_hooks_scanned"] = will_hooks_scanned;
+    return j;
   }
 };
 
