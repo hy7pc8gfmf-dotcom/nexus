@@ -123,11 +123,11 @@ auto MmapRingBuffer::write(const std::string& content,
   }
   if (content.empty()) return Status::Ok();
 
-  auto data = nlohmann::json{
-    {"ts", current_unix_time()},
-    {"c",  content},
-    {"ch", channel},
-  }.dump();
+  auto data_obj = nlohmann::json::object();
+  data_obj["ts"] = current_unix_time();
+  data_obj["c"]  = content;
+  data_obj["ch"] = channel;
+  auto data = data_obj.dump();
 
   if (data.size() > kContentMaxLen) data = data.substr(0, kContentMaxLen);
 
