@@ -9,7 +9,9 @@ add_library(psyche_lib STATIC
   psi_balancer.cpp
   flow_bridge.cpp
   semantic_cluster.cpp
-  self_evolve_trigger.cpp)
+  self_evolve_trigger.cpp
+  semantic_atlas.cpp
+  semantic_bridge.cpp)
 
 target_link_libraries(psyche_lib PUBLIC nexus_ipc nexus_types)
 target_include_directories(psyche_lib PUBLIC "${PROJECT_SOURCE_DIR}/include")
