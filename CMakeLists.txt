@@ -155,3 +155,54 @@ endif()
 if(NEXUS_BUILD_EXAMPLES)
   add_subdirectory(examples)
 endif()
+
+# ═══════════════════════════════════════════════════════════════════
+# CPack — Linux 包生成 (.deb / .rpm)
+# ═══════════════════════════════════════════════════════════════════
+# 用法: cpack --config build/CPackConfig.cmake -G DEB
+#       cpack --config build/CPackConfig.cmake -G RPM
+# ═══════════════════════════════════════════════════════════════════
+if(UNIX AND NOT APPLE)
+  set(CPACK_GENERATOR "DEB;RPM")
+  set(CPACK_PACKAGE_NAME "nexus")
+  set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+  set(CPACK_PACKAGE_VENDOR "CherryClaw")
+  set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Nexus AGI Nervous System")
+  set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/hy7pc8gfmf-dotcom/nexus")
+  set(CPACK_PACKAGE_CONTACT "nexus@cherryclaw.dev")
+  set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
+  set(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/README.md")
+
+  # Debian 特定
+  set(CPACK_DEBIAN_PACKAGE_DEPENDS "libc6 (>= 2.35)")
+  set(CPACK_DEBIAN_PACKAGE_SECTION "devel")
+  set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
+
+  # RPM 特定
+  set(CPACK_RPM_PACKAGE_REQUIRES "glibc >= 2.35")
+  set(CPACK_RPM_PACKAGE_LICENSE "Apache-2.0")
+
+  # 安装规则
+  install(TARGETS
+    neural daemon core algo env_checker
+    RUNTIME DESTINATION bin
+  )
+
+  # Linux-only 下构建的额外 EXE
+  if(UNIX)
+    install(TARGETS
+      psyche bridge coordinator quantum logic holographic
+      RUNTIME DESTINATION bin
+    )
+  endif()
+
+  install(FILES
+    "${CMAKE_SOURCE_DIR}/README.md"
+    "${CMAKE_SOURCE_DIR}/LICENSE"
+    "${CMAKE_SOURCE_DIR}/NOTICE"
+    "${CMAKE_SOURCE_DIR}/CHANGELOG.md"
+    DESTINATION share/doc/nexus
+  )
+
+  include(CPack)
+endif()
