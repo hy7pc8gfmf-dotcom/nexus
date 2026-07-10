@@ -18,8 +18,9 @@ jobs:
         run: |
           $installer = "$env:TEMP\innosetup.exe"
           curl.exe -sSL "https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe" -o $installer
-          Start-Process $installer -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=$env:LOCALAPPDATA\Programs\Inno Setup 6" -Wait
-          Write-Output "Inno Setup installed"
+          Start-Process $installer -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=C:\InnoSetup" -Wait
+          Write-Output "Inno Setup installed to C:\InnoSetup"
+          Write-Output "ISCC: C:\InnoSetup\ISCC.exe"
 
       - name: Build
         shell: cmd
@@ -45,7 +46,7 @@ jobs:
             $_.DirectoryName -ne $exeDir
           } | Copy-Item -Destination $exeDir -Force
           Get-ChildItem $exeDir -Filter "*.exe" | Select Name
-          & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" "$issDir\setup.iss"
+          & "C:\InnoSetup\ISCC.exe" "$issDir\setup.iss"
         continue-on-error: false
 
       - name: List dist (debug)
