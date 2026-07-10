@@ -15,19 +15,19 @@ set(NEXUS_TEST_SRC
   test_daemon/state_writer_test.cpp
   test_psyche/psi_reasoner_test.cpp
   test_psyche/observer_test.cpp
-  ${PROJECT_SOURCE_DIR}/src/core/meta_axiom_engine.cpp
-  ${PROJECT_SOURCE_DIR}/src/core/coq_kernel.cpp
+  ${CMAKE_SOURCE_DIR}/src/core/meta_axiom_engine.cpp
+  ${CMAKE_SOURCE_DIR}/src/core/coq_kernel.cpp
 )
 
 # thermal_governor 使用 Windows API, 仅 Windows 构建
 if(WIN32)
   list(APPEND NEXUS_TEST_SRC
     test_core/thermal_test.cpp
-    ${PROJECT_SOURCE_DIR}/src/core/thermal_governor.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/thermal_governor.cpp
   )
   if(MSVC)
     set_source_files_properties(
-      ${PROJECT_SOURCE_DIR}/src/core/thermal_governor.cpp
+      ${CMAKE_SOURCE_DIR}/src/core/thermal_governor.cpp
       PROPERTIES COMPILE_FLAGS "/Zc:strictStrings-"
     )
   endif()
@@ -51,8 +51,8 @@ else()
 endif()
 
 target_include_directories(nexus_tests PRIVATE
-  "${PROJECT_SOURCE_DIR}/include"
-  "${PROJECT_SOURCE_DIR}/third_party"
+  "${CMAKE_SOURCE_DIR}/include"
+  "${CMAKE_SOURCE_DIR}/third_party"
 )
 
 # vcpkg 模式下额外链接 fmt/spdlog
