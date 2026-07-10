@@ -136,6 +136,21 @@ endif()
 # 测试
 # ═══════════════════════════════════════════════════════════════════
 if(NEXUS_BUILD_TESTS)
+  # GTest via FetchContent (vcpkg 模式用 vcpkg 的 GTest)
+  if(NOT NEXUS_USE_VCPKG)
+    include(FetchContent)
+    FetchContent_Declare(
+      googletest
+      GIT_REPOSITORY https://github.com/google/googletest.git
+      GIT_TAG v1.15.2
+    )
+    # 关闭 GTest 自身的测试和安装
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+    message(STATUS "GTest: ${googletest_SOURCE_DIR} (via FetchContent)")
+  endif()
+
   if(NEXUS_USE_VCPKG)
     find_package(GTest CONFIG QUIET)
     if(GTest_FOUND)
@@ -145,7 +160,8 @@ if(NEXUS_BUILD_TESTS)
       message(WARNING "GTest not found — 跳过测试构建")
     endif()
   else()
-    message(STATUS "无 vcpkg: 跳过测试构建 (GTest 不可用)")
+    enable_testing()
+    add_subdirectory(tests)
   endif()
 endif()
 

@@ -14,10 +14,8 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
-#include <gtest/gtest-death-test.h>
 
 #include <nlohmann/json.hpp>
-#include <spdlog/spdlog.h>
 
 #include "nexus/types/status.h"
 #include "nexus/types/component_state.h"
