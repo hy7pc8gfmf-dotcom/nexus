@@ -1,6 +1,7 @@
 # 桥接层 — 静态库 (seed_bank 可被 psyche 复用)
 add_library(bridge_lib STATIC
-  seed_bank.cpp)
+  seed_bank.cpp
+  seed_buffer.cpp)
 
 target_link_libraries(bridge_lib PUBLIC nexus_ipc nexus_types)
 target_include_directories(bridge_lib PUBLIC "${PROJECT_SOURCE_DIR}/include")

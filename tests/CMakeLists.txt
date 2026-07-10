@@ -12,6 +12,7 @@ set(NEXUS_TEST_SRC
   test_core/quantum_test.cpp
   test_core/meta_axiom_test.cpp
   test_core/integration_test.cpp
+  test_core/seed_buffer_test.cpp
   test_daemon/state_writer_test.cpp
   test_psyche/psi_reasoner_test.cpp
   test_psyche/observer_test.cpp
