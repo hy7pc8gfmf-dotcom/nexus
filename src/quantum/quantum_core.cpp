@@ -71,29 +71,78 @@ void QuantumEmergence::init_subsystems_() noexcept {
 
 void QuantumEmergence::tick(double dt) noexcept {
   static std::mt19937_64 rng(std::random_device{}());
+  static double phase = 0.0;
+  phase += dt;
+
+  // 层间纠缠矩阵 (5×5): 各层之间的耦合强度
+  const double entanglement[5][5] = {
+    // meta  drive belief taboo mission
+    {0.00, 0.15, 0.10, 0.05, 0.08},  // meta
+    {0.15, 0.00, 0.20, 0.12, 0.15},  // drive
+    {0.10, 0.20, 0.00, 0.25, 0.10},  // belief
+    {0.05, 0.12, 0.25, 0.00, 0.18},  // taboo
+    {0.08, 0.15, 0.10, 0.18, 0.00},  // mission
+  };
+
+  // 计算各层平均激活
+  double layer_avg[5] = {};
+  int layer_count[5] = {};
+  for (const auto& s : subsystems_) {
+    if (s.layer >= 0 && s.layer < 5) {
+      layer_avg[s.layer] += s.activation;
+      layer_count[s.layer]++;
+    }
+  }
+  for (int L = 0; L < 5; ++L) {
+    if (layer_count[L] > 0) layer_avg[L] /= layer_count[L];
+  }
 
   for (auto& s : subsystems_) {
-    // 层内激活传播
-    double layer_boost = 0.0;
-    for (const auto& other : subsystems_) {
-      if (other.layer == s.layer && &other != &s)
-        layer_boost += other.activation * 0.01;
+    // 1. 层内同步 (同层趋向平均)
+    double sync = 0.0;
+    if (s.layer >= 0 && s.layer < 5 && layer_count[s.layer] > 1) {
+      sync = (layer_avg[s.layer] - s.activation) * 0.1;
     }
 
-    // 噪声驱动
-    double noise = std::normal_distribution<double>(0, 0.02)(rng);
-    s.activation = std::clamp(s.activation + layer_boost * dt + noise * dt, 0.0, 1.0);
-    s.coherence  = std::clamp(s.coherence + noise * dt * 0.5, 0.0, 1.0);
+    // 2. 层间纠缠 (受其他层影响)
+    double entangle = 0.0;
+    for (int L = 0; L < 5; ++L) {
+      if (L != s.layer) {
+        entangle += entanglement[s.layer][L] * layer_avg[L];
+      }
+    }
+
+    // 3. 量子噪声 (随机波动)
+    double noise = std::normal_distribution<double>(0, 0.03)(rng);
+
+    // 4. 量子隧穿: 小概率大幅跳跃
+    double tunnel = 0.0;
+    if (std::uniform_real_distribution<double>(0, 1)(rng) < 0.02 * dt * 60) {
+      tunnel = std::normal_distribution<double>(0, 0.15)(rng);
+    }
+
+    // 5. 周期驱动 (由全局相位调制)
+    double drive = std::sin(phase * 2.0 + s.layer * 1.5) * 0.01;
+
+    // 综合更新
+    s.activation = std::clamp(
+      s.activation + (sync + entangle + noise + tunnel + drive) * dt, 0.0, 1.0);
+
+    // 相干性: 受纠缠加强, 受噪声削弱
+    double coherence_drive = entangle * 0.1 - std::abs(noise) * 0.5 - tunnel * 0.3;
+    s.coherence = std::clamp(s.coherence + coherence_drive * dt, 0.0, 1.0);
   }
 
-  // 全局涌现
+  // 全局涌现: AE = 相干激活, WE = 非相干激活
   double sum_ae = 0, sum_we = 0;
   for (const auto& s : subsystems_) {
-    sum_ae += s.activation * s.coherence;
+    // 层权重: 高层 (mission) 贡献更大 AE
+    double layer_weight = 1.0 + static_cast<double>(s.layer) * 0.2;
+    sum_ae += s.activation * s.coherence * layer_weight;
     sum_we += s.activation * (1.0 - s.coherence);
   }
-  global_ae_ = sum_ae / subsystems_.size();
-  global_we_ = sum_we / subsystems_.size();
+  global_ae_ = std::clamp(sum_ae / (subsystems_.size() * 1.5), 0.0, 1.0);
+  global_we_ = std::clamp(sum_we / subsystems_.size(), 0.0, 1.0);
 }
 
 auto QuantumEmergence::subsystems() const noexcept -> const std::vector<SubsystemState>& { return subsystems_; }

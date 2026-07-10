@@ -131,10 +131,11 @@ if(WIN32)
   add_subdirectory(src/logic)
   add_subdirectory(src/holographic)
 else()
-  # Linux: 跨平台组件 (含 psyche_lib 供测试链接)
+  # Linux: 跨平台组件 (psyche_lib/quantum_lib 供测试链接)
   add_subdirectory(src/env_checker)
   add_subdirectory(src/algo)
   add_subdirectory(src/psyche)
+  add_subdirectory(src/quantum)
 endif()
 
 # ═══════════════════════════════════════════════════════════════════
