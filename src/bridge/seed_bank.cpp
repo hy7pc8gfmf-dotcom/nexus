@@ -128,24 +128,65 @@ auto SeedBank::load_unified(const std::string& path) noexcept -> Status {
     seeds_.clear();
     domain_index_.clear();
 
-    // 版本检查
-    int version = data.value("version", 2);
+    // 加载种子 — 通过 dump + json::parse 单个值的方式遍历对象
+    // (最小化 json 不支持对象迭代器)
+    auto seeds_obj = data["seeds"];
+    if (seeds_obj.is_object()) {
+      auto raw = seeds_obj.dump();
+      size_t pos = 0;
+      while (pos < raw.size() && raw[pos] != '{') ++pos;
+      if (pos < raw.size()) ++pos; // skip '{'
 
-    // 加载种子
-    auto seeds_json = data.value("seeds", nlohmann::json::object());
-    for (auto it = seeds_json.begin(); it != seeds_json.end(); ++it) {
-      const auto& j = it.value();
-      SeedEntry seed;
-      seed.name        = j.value("name", it.key());
-      seed.intensity   = j.value("intensity", 0);
-      seed.source      = j.value("source", "");
-      seed.type        = j.value("type", "");
-      seed.domain_tag  = j.value("domain_tag", "");
-      seed.step_detail = j.value("step_detail", "");
-      seeds_[seed.name] = seed;
+      while (pos < raw.size() && raw[pos] != '}') {
+        // 跳过空白
+        while (pos < raw.size() && (raw[pos] == ' ' || raw[pos] == '\n' || raw[pos] == '\t' || raw[pos] == '\r')) ++pos;
+        if (pos >= raw.size() || raw[pos] == '}') break;
+        if (raw[pos] != '"') { ++pos; continue; }
+
+        // 读键名
+        ++pos; // skip '"'
+        std::string key;
+        while (pos < raw.size() && raw[pos] != '"') {
+          if (raw[pos] == '\\') { ++pos; if (pos < raw.size()) key += raw[pos]; }
+          else key += raw[pos];
+          ++pos;
+        }
+        if (pos >= raw.size()) break;
+        ++pos; // skip closing '"'
+
+        // 跳过 ':'
+        while (pos < raw.size() && raw[pos] != ':') ++pos;
+        if (pos < raw.size()) ++pos;
+
+        // 提取值
+        size_t val_start = pos;
+        int depth = 0;
+        while (pos < raw.size()) {
+          if (raw[pos] == '{' || raw[pos] == '[') depth++;
+          else if (raw[pos] == '}' || raw[pos] == ']') { depth--; if (depth < 0) break; }
+          else if (raw[pos] == '"') {
+            ++pos;
+            while (pos < raw.size() && !(raw[pos] == '"' && raw[pos-1] != '\\')) ++pos;
+          }
+          ++pos;
+          if (depth <= 0 && (raw[pos] == ',' || raw[pos] == '}')) break;
+        }
+
+        auto val = nlohmann::json::parse(raw.substr(val_start, pos - val_start));
+        SeedEntry seed;
+        seed.name        = val.value("name", key);
+        seed.intensity   = val.value("intensity", 0);
+        seed.source      = val.value("source", "");
+        seed.type        = val.value("type", "");
+        seed.domain_tag  = val.value("domain_tag", "");
+        seed.step_detail = val.value("step_detail", "");
+        seeds_[seed.name] = seed;
+
+        if (pos < raw.size() && raw[pos] == ',') ++pos;
+      }
     }
 
-    // 从种子中重建域索引 (最小化 json 无对象迭代器)
+    // 从 domain_tag 重建域索引 (最小化 json 无对象迭代器)
     for (auto& [name, seed] : seeds_) {
       if (!seed.domain_tag.empty()) {
         DomainEntry de;

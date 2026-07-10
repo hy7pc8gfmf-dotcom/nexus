@@ -282,7 +282,7 @@ static int run_reasoner(const std::string& problem,
     NEXUS_LOG(logger, info, "种子库已加载: {} 种子, {} 域",
       seed_bank.count(), seed_bank.domains().size());
   } else {
-    NEXUS_LOG(logger, warn, "种子库不可用: {}", seed_load.error().to_string());
+    NEXUS_LOG(logger, warn, "种子库不可用: {}", seed_load.to_string());
   }
 
   nexus::psyche::PsiReasoner::Config cfg;
