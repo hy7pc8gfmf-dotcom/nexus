@@ -60,6 +60,7 @@ jobs:
           exit ${PIPESTATUS[0]}
 
       - name: Upload cppcheck report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: cppcheck-report
