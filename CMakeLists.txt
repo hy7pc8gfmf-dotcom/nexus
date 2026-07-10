@@ -21,7 +21,9 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
 # ── 编译器选项 ──
 if(MSVC)
-  add_compile_options(/W4 /utf-8 /permissive- /Zc:__cplusplus)
+  add_compile_options(/W4 /utf-8 /Zc:__cplusplus)
+  # /permissive- 已移除: MSVC 14.44 + Windows SDK sal.h 有
+  # SAL 注解冲突, 影响 thermal_governor 编译
   add_compile_options(/wd4100)  # 'identifier' : unreferenced formal parameter
   add_compile_options(/wd4189)  # local variable is initialized but not referenced
   add_link_options(/LTCG)
@@ -130,6 +132,7 @@ if(WIN32)
   add_subdirectory(src/quantum)
   add_subdirectory(src/logic)
   add_subdirectory(src/holographic)
+  add_subdirectory(src/thermal)
 else()
   # Linux: 跨平台组件 (psyche_lib/quantum_lib 供测试链接)
   add_subdirectory(src/env_checker)

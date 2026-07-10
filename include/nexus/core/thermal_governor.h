@@ -22,12 +22,10 @@
  *   governor.wait_if_hot();  // 阻塞直到冷却
  */
 
-#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <nlohmann/json.hpp>
 #include <string>
-#include <thread>
 
 #include "nexus/types/status.h"
 
@@ -94,11 +92,11 @@ private:
   double check_interval_ = 2.0;
   double cooldown_sec_  = 3.0;
 
-  // 状态
+  // 状态 (不依赖 <atomic>/<thread>, 避免 MSVC SAL 冲突)
   ThermalStatus status_;
   double last_check_ = 0.0;
-  std::atomic<bool> running_{false};
-  std::thread monitor_thread_;
+  volatile bool running_ = false;
+  void* thread_handle_ = nullptr;  // 平台线程句柄
 
   // 温度读取
   static double read_gpu_temp_() noexcept;

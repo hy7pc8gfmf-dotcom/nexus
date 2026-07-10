@@ -19,13 +19,12 @@ set(NEXUS_TEST_SRC
   ${CMAKE_SOURCE_DIR}/src/core/coq_kernel.cpp
 )
 
-# thermal_governor 暂不编译 (MSVC /permissive- 兼容问题待修复)
-# if(WIN32)
-#   list(APPEND NEXUS_TEST_SRC
-#     test_core/thermal_test.cpp
-#     ${CMAKE_SOURCE_DIR}/src/core/thermal_governor.cpp
-#   )
-# endif()
+# thermal_governor 测试 (链接 thermal_lib 避免 MSVC SAL 冲突)
+if(WIN32)
+  list(APPEND NEXUS_TEST_SRC
+    test_core/thermal_test.cpp
+  )
+endif()
 
 add_executable(nexus_tests ${NEXUS_TEST_SRC})
 
@@ -36,6 +35,10 @@ target_link_libraries(nexus_tests PRIVATE
   quantum_lib
   bridge_lib
 )
+
+if(WIN32)
+  target_link_libraries(nexus_tests PRIVATE thermal_lib)
+endif()
 
 # GTest 目标名: FetchContent → gtest/gtest_main, find_package → GTest::gtest
 if(TARGET GTest::gtest)

@@ -1,9 +1,6 @@
-# 热敏治理 — 静态库 (仅 Windows)
+# 热敏治理库
 if(WIN32)
-  add_library(thermal_lib STATIC thermal_governor.cpp)
+  add_library(thermal_lib STATIC ${CMAKE_CURRENT_LIST_DIR}/../core/thermal_governor.cpp)
   target_link_libraries(thermal_lib PUBLIC nexus_ipc nexus_types)
-  target_include_directories(thermal_lib PUBLIC "${PROJECT_SOURCE_DIR}/include")
-  if(MSVC)
-    set_source_files_properties(thermal_governor.cpp PROPERTIES COMPILE_FLAGS "/Zc:strictStrings-")
-  endif()
+  target_include_directories(thermal_lib PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../../include)
 endif()

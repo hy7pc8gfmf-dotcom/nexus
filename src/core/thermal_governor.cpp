@@ -3,6 +3,10 @@
 
 #include "nexus/core/thermal_governor.h"
 
+// <thread> 和 <atomic> 仅在 .cpp 中包含, 避免 MSVC SAL 冲突
+#include <atomic>
+#include <thread>
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -170,18 +174,21 @@ auto ThermalGovernor::wait_if_hot() noexcept -> bool {
 }
 
 void ThermalGovernor::start_background_monitor() noexcept {
-  if (running_.exchange(true)) return;
-  monitor_thread_ = std::thread([this]() {
-    while (running_.load()) {
+  if (running_) return;
+  running_ = true;
+
+  // 后台监测线程 — 纯粹在 .cpp 中管理
+  std::thread t([this]() {
+    while (running_) {
       check();
       std::this_thread::sleep_for(std::chrono::milliseconds(5000));
     }
   });
-  monitor_thread_.detach();
+  t.detach();
 }
 
 void ThermalGovernor::stop_background_monitor() noexcept {
-  running_.store(false);
+  running_ = false;
 }
 
 }  // namespace nexus::core
