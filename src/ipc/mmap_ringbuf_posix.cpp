@@ -32,6 +32,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "nexus/ipc/state_file.h"  // current_unix_time()
+
 namespace nexus::ipc {
 
 static_assert(kFieldSize == 1 * 1024 * 1024, "psi_field must be exactly 1MB");
