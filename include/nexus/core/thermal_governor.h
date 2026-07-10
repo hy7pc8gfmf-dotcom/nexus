@@ -17,9 +17,8 @@
  * 用法:
  *   ThermalGovernor governor;
  *   governor.start_background_monitor();
- *   // 每次推理前:
- *   if (governor.status().throttled) { /* 降低推理频率 */ }
- *   governor.wait_if_hot();  // 阻塞直到冷却
+ *   每次推理前检查 governor.status().throttled,
+ *   如果温度过高调用 governor.wait_if_hot()。
  */
 
 #include <chrono>
