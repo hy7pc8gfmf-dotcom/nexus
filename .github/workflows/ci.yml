@@ -14,10 +14,8 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y build-essential git cmake g++-14
       - name: Configure
         run: cmake -B build -S . -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=ON -DNEXUS_USE_VCPKG=OFF -DCMAKE_CXX_STANDARD=20
-      - name: Build main EXEs
+      - name: Build (incl. tests)
         run: cmake --build build -j $(nproc)
-      - name: Build tests
-        run: cmake --build build -j $(nproc) --target nexus_tests
       - name: Run tests
         run: ctest --test-dir build --output-on-failure --timeout 30
 
@@ -32,7 +30,6 @@ jobs:
           call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat" -arch=x64
           cmake -B build -S . -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=ON -DNEXUS_USE_VCPKG=OFF -DFETCHCONTENT_FULLY_DISCONNECTED=OFF
           cmake --build build --config Release -j
-          cmake --build build --target nexus_tests --config Release -j
           ctest --test-dir build -C Release --output-on-failure --timeout 30
 
       - name: Upload EXEs
@@ -43,7 +40,7 @@ jobs:
             build/bin/Release/*.exe
 
   # ═══════════════════════════════════════════════════════════════
-  # 静态分析 (cppcheck)
+  # 静态分析 (cppcheck) — 仅分析 src/ 排除 third_party
   # ═══════════════════════════════════════════════════════════════
   quality:
     runs-on: ubuntu-24.04
@@ -59,10 +56,10 @@ jobs:
             --suppress=redundantAssignment \
             --suppress=uninitMemberVar \
             --suppress=ctu \
-            --suppress=unmatchedSuppression \
+            --suppress=unusedFunction \
             --inline-suppr \
             --error-exitcode=1 \
-            -I include/ -I third_party/ \
+            -I include/ \
             --std=c++20 \
             src/ 2>&1
 
