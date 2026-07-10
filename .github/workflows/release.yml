@@ -40,7 +40,10 @@ jobs:
           $issDir = "$pwd\packaging\windows"
           $exeDir = "$pwd\build\bin\Release"
           New-Item -ItemType Directory -Force -Path $exeDir | Out-Null
-          Get-ChildItem "$pwd\build\" -Recurse -Filter "*.exe" | Copy-Item -Destination $exeDir -Force
+          # 只复制不在目标目录下的 EXE
+          Get-ChildItem "$pwd\build\" -Recurse -Filter "*.exe" | Where-Object {
+            $_.DirectoryName -ne $exeDir
+          } | Copy-Item -Destination $exeDir -Force
           Get-ChildItem $exeDir -Filter "*.exe" | Select Name
           & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" "$issDir\setup.iss"
         continue-on-error: false
