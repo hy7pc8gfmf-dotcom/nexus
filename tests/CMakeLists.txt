@@ -10,6 +10,8 @@ add_executable(nexus_tests
   test_core/state_file_test.cpp
   test_core/mmap_ringbuf_test.cpp
   test_daemon/state_writer_test.cpp
+  test_psyche/psi_reasoner_test.cpp
+  ${CMAKE_SOURCE_DIR}/src/psyche/psi_reasoner.cpp
 )
 
 target_link_libraries(nexus_tests PRIVATE

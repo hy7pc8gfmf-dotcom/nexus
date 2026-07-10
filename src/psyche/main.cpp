@@ -45,6 +45,7 @@
 #include "nexus/utils/logger.h"
 #include "nexus/psyche/navigator.h"
 #include "nexus/psyche/emergence.h"
+#include "nexus/psyche/observer.h"
 #include "nexus/psyche/psi_reasoner.h"
 
 namespace fs = std::filesystem;
@@ -231,20 +232,58 @@ static auto mock_infer(const std::string& problem,
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// Observer 验证回调 (连接 ObserverPool → PsiReasoner)
+// ═══════════════════════════════════════════════════════════════════
+
+static auto make_verify_callback(nexus::psyche::ObserverPool* pool)
+    -> nexus::psyche::VerifyCallback {
+  return [pool](const nexus::psyche::ReasoningStep& step) -> double {
+    if (!pool) return 0.5;
+
+    auto ctx = nlohmann::json::object();
+    ctx["step_id"]    = step.id;
+    ctx["content"]    = step.content;
+    ctx["confidence"] = step.confidence;
+    ctx["branch_id"]  = step.branch_id;
+
+    // 运行批评者和审计者: 发现问题
+    auto critics = pool->observe_by_role(
+      nexus::psyche::ObserverRole::kCritic, ctx);
+    auto auditors = pool->observe_by_role(
+      nexus::psyche::ObserverRole::kAuditor, ctx);
+
+    // 综合置信度 = 原始置信度 - 批评者发现的问题数 * 系数
+    double penalty = 0.0;
+    for (const auto& c : critics) {
+      penalty += (1.0 - c.confidence) * 0.1;
+    }
+    for (const auto& a : auditors) {
+      penalty += (1.0 - a.confidence) * 0.05;
+    }
+
+    return std::clamp(step.confidence - penalty, 0.0, 1.0);
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // Ψ 推理模式入口
 // ═══════════════════════════════════════════════════════════════════
 
 static int run_reasoner(const std::string& problem,
+                         nexus::psyche::ObserverPool* observers,
                          nexus::utils::Logger* logger) {
   NEXUS_LOG(logger, info, "Ψ 推理启动: {}", problem);
 
   nexus::psyche::PsiReasoner::Config cfg;
   cfg.max_steps = 15;
-  cfg.enable_observer = false;
+  cfg.enable_observer = (observers != nullptr);
   cfg.enable_seeds = false;
 
   nexus::psyche::PsiReasoner reasoner(cfg);
   reasoner.set_infer_callback(mock_infer);
+  if (observers) {
+    reasoner.set_verify_callback(make_verify_callback(observers));
+  }
 
   auto start = std::chrono::steady_clock::now();
   auto result = reasoner.reason(problem, "");
@@ -300,7 +339,9 @@ auto main(int argc, char* argv[]) -> int {
 
   // 0. Ψ 推理模式 (快速路径)
   if (!args.reason.empty()) {
-    return run_reasoner(args.reason, logger.get());
+    // 创建 ObserverPool 用于验证
+    nexus::psyche::ObserverPool obs_pool;
+    return run_reasoner(args.reason, &obs_pool, logger.get());
   }
 
   // 1. 读取 env.json
