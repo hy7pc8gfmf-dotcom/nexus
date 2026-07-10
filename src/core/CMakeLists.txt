@@ -28,6 +28,11 @@ add_executable(core
   meta_axiom_engine.cpp
   thermal_governor.cpp)
 
+if(MSVC)
+  # thermal_governor.cpp 包含 windows.h, /permissive- 下需放宽
+  set_source_files_properties(thermal_governor.cpp PROPERTIES COMPILE_FLAGS "/Zc:strictStrings-")
+endif()
+
 target_link_libraries(core PRIVATE
   nexus_ipc
   nexus_types
