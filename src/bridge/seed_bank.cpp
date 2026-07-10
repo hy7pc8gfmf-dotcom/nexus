@@ -145,15 +145,28 @@ auto SeedBank::load_unified(const std::string& path) noexcept -> Status {
       seeds_[seed.name] = seed;
     }
 
-    // 加载域索引
-    auto domain_idx = data.value("domain_index", nlohmann::json::object());
-    for (auto it = domain_idx.begin(); it != domain_idx.end(); ++it) {
-      for (const auto& entry : it.value()) {
+    // 从种子中重建域索引 (最小化 json 无对象迭代器)
+    for (auto& [name, seed] : seeds_) {
+      if (!seed.domain_tag.empty()) {
         DomainEntry de;
-        de.name       = entry.value("name", "");
-        de.confidence = entry.value("confidence", 0.5);
-        de.source     = entry.value("source", "");
-        domain_index_[it.key()].push_back(de);
+        de.name = seed.name;
+        de.confidence = 0.5;
+        domain_index_[seed.domain_tag].push_back(de);
+      }
+    }
+
+    // 如果 domain_tag 为空, 尝试从 step_detail 提取域信息
+    if (domain_index_.empty()) {
+      for (auto& [name, seed] : seeds_) {
+        if (!seed.step_detail.empty()) {
+          std::string domain = seed.step_detail.substr(0, seed.step_detail.find(':'));
+          if (!domain.empty() && domain != "unknown") {
+            DomainEntry de;
+            de.name = seed.name;
+            de.confidence = 0.5;
+            domain_index_[domain].push_back(de);
+          }
+        }
       }
     }
 

@@ -22,5 +22,5 @@ add_executable(psyche
   meta_axiom.cpp
   holographic.cpp)
 
-target_link_libraries(psyche PRIVATE psyche_lib)
+target_link_libraries(psyche PRIVATE psyche_lib bridge_lib)
 install(TARGETS psyche RUNTIME DESTINATION bin)
