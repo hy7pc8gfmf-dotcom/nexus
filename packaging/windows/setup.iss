@@ -73,7 +73,6 @@ zh.PathAdd=将 Nexus 添加到系统 PATH（推荐）
 
 [Files]
 ; ── 核心 EXE (11 个模块) ──
-Source: "..\..\build\bin\Release\neural.exe";         DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "..\..\build\bin\Release\daemon.exe";         DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "..\..\build\bin\Release\core.exe";           DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "..\..\build\bin\Release\algo.exe";           DestDir: "{app}\bin"; Flags: ignoreversion
@@ -217,7 +216,7 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ExePath: String;
 begin
-  ExePath := ExpandConstant('{app}\bin\neural.exe');
+  ExePath := ExpandConstant('{app}\bin\daemon.exe');
   if not FileExists(ExePath) then
   begin
     Result := 'Warning: Could not verify build artifacts.'#13#10 +
