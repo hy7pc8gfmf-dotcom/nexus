@@ -39,7 +39,7 @@ cppcheck --enable=all --suppress=missingIncludeSystem -I include/ -I third_party
 | 单元测试 | Google Test 1.15 | ✅ 必须通过 |
 | 静态分析 | cppcheck | ⚠️ 参考（允许失败） |
 | 线程安全 | ThreadSanitizer | ⚠️ 参考（允许失败） |
-| 覆盖率 | gcovr | ⏳ 目标 ≥10%，逐步提升 |
+| 覆盖率 | gcovr | ⚠️ 参考（允许失败，逐步调优） |
 
 ## 如何贡献
 
