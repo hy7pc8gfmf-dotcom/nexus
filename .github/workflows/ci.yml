@@ -44,7 +44,6 @@ jobs:
   # ═══════════════════════════════════════════════════════════════
   quality:
     runs-on: ubuntu-24.04
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y cppcheck
@@ -54,6 +53,7 @@ jobs:
             --suppress=missingIncludeSystem \
             --suppress=ctuOneDefinitionRuleViolation \
             --inline-suppr \
+            --error-exitcode=1 \
             -I include/ \
             --std=c++20 \
             src/ 2>&1
