@@ -16,8 +16,10 @@ jobs:
       - name: Install Inno Setup
         shell: pwsh
         run: |
-          Set-Item -Path Env:PATH -Value ($Env:PATH + ";$Env:LOCALAPPDATA\Programs\Inno Setup 6")
-          choco install innosetup --no-progress -y
+          $installer = "$env:TEMP\innosetup.exe"
+          Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/releases/download/iss-6.4.2/InnoSetup-6.4.2.exe" -OutFile $installer
+          Start-Process $installer -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=$env:LOCALAPPDATA\Programs\Inno Setup 6" -Wait
+          Write-Output "Inno Setup installed"
 
       - name: Build
         shell: cmd
@@ -31,6 +33,11 @@ jobs:
         run: |
           set PATH=%PATH%;%LOCALAPPDATA%\Programs\Inno Setup 6
           ISCC.exe packaging\windows\setup.iss
+        continue-on-error: false
+
+      - name: List dist (debug)
+        shell: pwsh
+        run: Get-ChildItem dist\ -Recurse -Name
 
       - name: Upload Release
         uses: softprops/action-gh-release@v2
