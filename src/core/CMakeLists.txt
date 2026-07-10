@@ -26,7 +26,8 @@ add_executable(core
   gpu_token.cpp
   coq_kernel.cpp
   meta_axiom_engine.cpp
-  proof_cache.cpp)
+  proof_cache.cpp
+  runtime_manager.cpp)
 
 target_link_libraries(core PRIVATE
   nexus_ipc

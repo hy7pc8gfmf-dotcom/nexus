@@ -25,6 +25,7 @@ set(NEXUS_TEST_SRC
   test_psyche/senses_slime_test.cpp
   ${CMAKE_SOURCE_DIR}/src/core/meta_axiom_engine.cpp
   ${CMAKE_SOURCE_DIR}/src/core/proof_cache.cpp
+  ${CMAKE_SOURCE_DIR}/src/core/runtime_manager.cpp
   ${CMAKE_SOURCE_DIR}/src/core/coq_kernel.cpp
 )
 
