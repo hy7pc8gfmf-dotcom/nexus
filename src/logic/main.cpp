@@ -57,42 +57,6 @@ static auto import_seed_bank(const std::string& source_path,
   NEXUS_LOG(logger, info, "请运行: python port_seed_bank.py");
   return false;
 }
-      auto& seed = it.value();
-
-      // 找域 — 使用 domain_tag 字段
-      auto domain_tag = seed.value("domain_tag", std::string(""));
-
-      nlohmann::json record;
-      record["name"]        = name;
-      record["intensity"]   = seed.value("intensity", 0);
-      record["source"]      = seed.value("source", "");
-      record["type"]        = seed.value("type", "");
-      record["domain_tag"]  = seed.value("domain_tag", "");
-      record["step_detail"] = seed.value("step_detail", "");
-
-      ofs << record.dump() << "\n";
-      written++;
-    }
-
-    // 写索引
-    nlohmann::json idx;
-    idx["version"]     = data.value("version", 2);
-    idx["total_seeds"] = total;
-    idx["dimension"]   = dimension;
-    idx["domains"]     = nlohmann::json::array();
-
-    std::ofstream idx_ofs(output_dir + "/seed_bank_index.json");
-    idx_ofs << idx.dump(2);
-
-    NEXUS_LOG(logger, info, "种子导入完成: {} 颗, {} 域, {}D", written,
-      static_cast<int>(domain_map.size()), dimension);
-    return true;
-
-  } catch (const std::exception& e) {
-    NEXUS_LOG(logger, error, "导入失败: {}", e.what());
-    return false;
-  }
-}
 
 auto main(int argc, char* argv[]) -> int {
   auto args = parse_args(argc, argv);
