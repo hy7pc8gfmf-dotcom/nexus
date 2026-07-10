@@ -91,9 +91,6 @@ Source: "..\..\LICENSE";       DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\NOTICE";        DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\CHANGELOG.md";  DestDir: "{app}"; Flags: ignoreversion
 
-; ── 示例配置 ──
-Source: "..\..\examples\*";    DestDir: "{app}\examples"; Flags: ignoreversion recursesubdirs createallsubdirs
-
 ; ── CUDA 运行时 (可选组件) ──
 ; 注意: cublas64_12.dll, cudart64_12.dll 等需要从 CUDA Toolkit 安装目录获取
 ; 此处为占位，实际打包时需要确保 CUDA DLLs 存在
@@ -117,7 +114,6 @@ Name: "custom";    Description: "Custom installation"; Flags: iscustom
 Name: "{app}\bin"
 Name: "{app}\data"
 Name: "{app}\logs"
-Name: "{app}\examples"
 Name: "{app}\conf"
 
 [Registry]
