@@ -25,7 +25,8 @@ add_executable(core
   native_bridge.cpp
   gpu_token.cpp
   coq_kernel.cpp
-  meta_axiom_engine.cpp)
+  meta_axiom_engine.cpp
+  thermal_governor.cpp)
 
 target_link_libraries(core PRIVATE
   nexus_ipc
