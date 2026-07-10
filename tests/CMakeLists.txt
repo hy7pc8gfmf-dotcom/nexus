@@ -19,6 +19,7 @@ set(NEXUS_TEST_SRC
   test_psyche/psi_guard_test.cpp
   test_psyche/grid_test.cpp
   test_psyche/pathway_test.cpp
+  test_psyche/flow_test.cpp
   ${CMAKE_SOURCE_DIR}/src/core/meta_axiom_engine.cpp
   ${CMAKE_SOURCE_DIR}/src/core/coq_kernel.cpp
 )
