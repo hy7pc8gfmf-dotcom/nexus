@@ -1,6 +1,36 @@
 Nexus — AGI Nervous System
 Copyright 2026 CherryClaw & Contributors
-Licensed under Apache License, Version 2.0 (see LICENSE)
+
+==========================================================================
+SOURCE CODE LICENSE
+==========================================================================
+
+The C++ source code, headers, build scripts, documentation, and test files
+in this repository are licensed under Apache License, Version 2.0.
+See LICENSE for the full license text.
+
+==========================================================================
+RUNTIME COMPONENTS — SEPARATE LICENSE (NOT APACHE 2.0)
+==========================================================================
+
+Nexus depends on certain runtime components to function at full capacity.
+These components are NOT part of the Apache 2.0 licensed source code.
+They are proprietary runtime components owned by CherryClaw and are
+subject to a separate Runtime License Agreement (CLA/RLA.md).
+
+The following components are NOT covered by Apache 2.0:
+
+| Component | Type | Purpose |
+|-----------|------|---------|
+| meta_kernel_rules.dll | Coq compiled binary | 5 meta rules (open_completeness, fissure, foundation, recursion, observer) |
+| constructive_rules.dll | Coq compiled binary | Constructive logic rules (duality check, ground chain, equivalence) |
+| Future Coq-extracted DLLs | Coq compiled binary | Any additional Coq theorem extraction produced after this notice |
+
+These DLLs are loaded dynamically at runtime if present. Without them,
+Nexus runs in degraded mode (mock inference, no Coq verification).
+
+Access to these components requires a signed Runtime License Agreement.
+Contact nexus-legal@cherryclaw.dev for inquiries.
 
 ==========================================================================
 THIRD-PARTY DEPENDENCIES
@@ -30,17 +60,7 @@ This product includes or links to the following third-party software:
 
 ==========================================================================
 RUNTIME DEPENDENCIES (NOT DISTRIBUTED)
-==========================================================================
-
-Nexus can optionally load Coq-verified runtime modules at startup.
-These modules are NOT part of the Nexus distribution:
-
-- meta_kernel_rules.dll — 5 meta rules (Coq verified via Recursor Theory)
-- constructive_rules.dll — Constructive logic rules (Coq extracted)
-  Underlying Coq proofs reside in the user's existing D:/synapse/ installation.
-
-These DLLs are loaded dynamically at runtime if present.
-Nexus runs without them (degraded mode).
+==========================================================================  (obsolete — see "RUNTIME COMPONENTS" above)
 
 ==========================================================================
 ADDITIONAL ATTRIBUTIONS
@@ -49,3 +69,5 @@ ADDITIONAL ATTRIBUTIONS
 Portions of this software were inspired by or derived from:
 - Recursor Theory: Gödel/Löb/Tarski formal proofs (Coq)
 - Audit Framework: Coq formal proof of audit soundness
+
+Coq proof engine: https://coq.inria.fr/
