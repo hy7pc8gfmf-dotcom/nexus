@@ -114,15 +114,18 @@ class PsiReasoner {
 public:
   /// 推理参数配置
   struct Config {
-    int    max_steps         = 30;     // 最大步数
-    int    max_branches      = 5;      // 最大并行分支数
-    double branch_threshold  = 0.4;    // 低于此置信度触发分支
-    double converge_threshold = 0.85;  // 收敛置信度阈值
-    int    converge_window   = 5;      // 收敛检测滑动窗口
-    double revision_threshold = 0.2;   // 低于此置信度触发修正
-    int    max_revisions     = 3;      // 单步最大修正次数
-    bool   enable_observer   = true;   // 启用 Observer 验证
-    bool   enable_seeds      = true;   // 启用种子知识注入
+    int    max_steps         = 30;
+    int    max_branches      = 5;
+    double branch_threshold  = 0.4;
+    double converge_threshold = 0.85;
+    int    converge_window   = 5;
+    double revision_threshold = 0.2;
+    int    max_revisions     = 3;
+    bool   enable_observer;
+    bool   enable_seeds;
+
+    Config() noexcept
+      : enable_observer(true), enable_seeds(true) {}
   };
 
   PsiReasoner(Config config = Config()) noexcept;
