@@ -41,3 +41,62 @@ jobs:
           name: nexus-windows-x64
           path: |
             build/bin/Release/*.exe
+
+  # ═══════════════════════════════════════════════════════════════
+  # 静态分析 (cppcheck)
+  # ═══════════════════════════════════════════════════════════════
+  quality:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y cppcheck
+      - name: Static analysis
+        run: |
+          cppcheck --enable=all \
+            --suppress=missingIncludeSystem \
+            --suppress=unmatchedSuppression \
+            --inline-suppr \
+            --error-exitcode=1 \
+            -I include/ -I third_party/ \
+            --std=c++20 \
+            src/ 2>&1
+
+  # ═══════════════════════════════════════════════════════════════
+  # 线程安全分析 (TSan) — continue-on-error
+  # ═══════════════════════════════════════════════════════════════
+  sanitizer:
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y build-essential git cmake
+      - name: Configure (TSan)
+        run: cmake -B build-tsan -S . -DCMAKE_BUILD_TYPE=Debug -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer -g -O1"
+      - name: Build
+        run: cmake --build build-tsan -j $(nproc)
+      - name: Test
+        run: ctest --test-dir build-tsan --output-on-failure --timeout 60 2>&1 || echo "TSan reported issues (non-blocking)"
+
+  # ═══════════════════════════════════════════════════════════════
+  # 覆盖率
+  # ═══════════════════════════════════════════════════════════════
+  coverage:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y build-essential git cmake gcovr
+      - name: Configure (coverage)
+        run: cmake -B build-cov -S . -DCMAKE_BUILD_TYPE=Debug -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=ON -DNEXUS_USE_VCPKG=OFF -DCMAKE_CXX_FLAGS="--coverage -g -O0"
+      - name: Build
+        run: cmake --build build-cov -j $(nproc)
+      - name: Test
+        run: ctest --test-dir build-cov --output-on-failure --timeout 30
+      - name: Coverage check (≥40%)
+        run: |
+          gcovr --root . \
+            --gcov-ignore-parse-errors \
+            --exclude third_party/ \
+            --exclude build-cov/ \
+            --exclude tests/ \
+            --exclude src/ipc/ \
+            --fail-under-line 40

@@ -1,10 +1,13 @@
-# Nexus — 神经系统 C++ 原生实现
+# Nexus — AGI 神经系统 C++ 原生实现
 
-**Nexus** 是 AGI 神经系统的第二代原生实现，将原有 Python 原型（`D:/synapse`）的架构复刻为 C++ EXE 进程架构。
+[![CI](https://github.com/hy7pc8gfmf-dotcom/nexus/actions/workflows/ci.yml/badge.svg)](https://github.com/hy7pc8gfmf-dotcom/nexus/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![C++](https://img.shields.io/badge/C++-20-00599C?logo=c%2B%2B)](https://en.cppreference.com/w/cpp/20)
+[![Platform](https://img.shields.io/badge/Platform-Windows_Linux-lightgrey)](https://github.com/hy7pc8gfmf-dotcom/nexus)
+[![Code Size](https://img.shields.io/github/languages/code-size/hy7pc8gfmf-dotcom/nexus)]()
 
-```
-✅ 27/27 组件完成 | 8 EXE | 14,571 行 C++20 | Apache 2.0
-```
+> **Nexus** 是 AGI 神经系统的 C++20 原生实现。  
+> 零 Python 依赖 · 无网络 IPC · 纯文件通信 · Apache 2.0 开源
 
 ## 核心理念
 
@@ -115,6 +118,22 @@ coordinator.exe --start
 ## 开源协议
 
 Apache 2.0 — 详见 [LICENSE](LICENSE)。
+
+## 贡献
+
+我们欢迎所有形式的贡献。详见 [贡献指南](docs/CONTRIBUTING.md)。
+
+| 入口 | 说明 |
+|:--|:--|
+| [Issues](https://github.com/hy7pc8gfmf-dotcom/nexus/issues) | 报告 Bug / 提议功能 |
+| [Pull Requests](https://github.com/hy7pc8gfmf-dotcom/nexus/pulls) | 提交代码 |
+| [CLA](CLA/README.md) | 贡献者许可协议（首次提交前签署） |
+
+**贡献前请确保：**
+- ✅ 本地 `ctest` 全部通过
+- ✅ 代码通过 `cppcheck` 静态分析
+- ✅ 新功能附带对应单元测试
+- ✅ 遵循 Apache 2.0 许可
 
 ## 与 D:/synapse 的关系
 

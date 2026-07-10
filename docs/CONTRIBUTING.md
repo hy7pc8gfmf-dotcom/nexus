@@ -2,9 +2,44 @@
 
 感谢你考虑为 Nexus 做贡献！
 
-## 行为准则
+## 贡献者许可协议 (CLA)
 
-本项目采用[贡献者公约](https://www.contributor-covenant.org/)。我们希望所有参与者保持专业、尊重和建设性。
+**所有贡献者在首个 Pull Request 合并前必须签署 CLA。**
+
+- [个人贡献者协议](../CLA/ICLA.md) — 独立开发者
+- [实体组织协议](../CLA/CCLA.md) — 公司/机构
+- 签署后发送到 `nexus-cla@cherryclaw.dev`
+
+## 开发环境
+
+| 平台 | 编译器 | 最低版本 |
+|------|--------|---------|
+| Windows | MSVC | 19.44 (VS 2022 17.14) |
+| Linux | GCC | 14.0 |
+
+```bash
+# 最小构建（含测试）
+cmake -B build -S . -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=ON
+cmake --build build -j
+
+# 运行全部测试
+ctest --test-dir build --output-on-failure
+
+# 静态分析（Linux）
+cppcheck --enable=all --suppress=missingIncludeSystem -I include/ -I third_party/ --std=c++20 src/
+```
+
+## CI 流水线
+
+提交后自动运行以下质量门禁：
+
+| 检查 | 工具 | 门槛 |
+|------|------|------|
+| 编译 | GCC 14 + MSVC 2022 | ✅ 必须通过 |
+| 单元测试 | Google Test 1.15 | ✅ 必须通过 |
+| 静态分析 | cppcheck | ✅ 无错误 |
+| 线程安全 | ThreadSanitizer | ⚠️ 参考（允许失败） |
+| 覆盖率 | gcovr | ⏳ 目标 ≥40% |
 
 ## 如何贡献
 
