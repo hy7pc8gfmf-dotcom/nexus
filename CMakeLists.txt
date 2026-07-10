@@ -182,19 +182,11 @@ if(UNIX AND NOT APPLE)
   set(CPACK_RPM_PACKAGE_REQUIRES "glibc >= 2.35")
   set(CPACK_RPM_PACKAGE_LICENSE "Apache-2.0")
 
-  # 安装规则
+  # Linux 只构建了 env_checker + algo
   install(TARGETS
-    neural daemon core algo env_checker
+    env_checker algo
     RUNTIME DESTINATION bin
   )
-
-  # Linux-only 下构建的额外 EXE
-  if(UNIX)
-    install(TARGETS
-      psyche bridge coordinator quantum logic holographic
-      RUNTIME DESTINATION bin
-    )
-  endif()
 
   install(FILES
     "${CMAKE_SOURCE_DIR}/README.md"
