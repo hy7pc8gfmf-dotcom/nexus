@@ -37,5 +37,6 @@ if(NEXUS_USE_VCPKG)
   )
 endif()
 
-include(GoogleTest)
-gtest_discover_tests(nexus_tests)
+# 注册 CTest — 使用 add_test 而非 gtest_discover_tests
+# (避免在多配置生成器下 NOT_BUILT 问题)
+add_test(NAME nexus_tests COMMAND nexus_tests)
