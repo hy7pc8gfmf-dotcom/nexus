@@ -106,9 +106,11 @@ void QuantumEmergence::tick(double dt) noexcept {
 
     // 2. 层间纠缠 (受其他层影响)
     double entangle = 0.0;
-    for (int L = 0; L < 5; ++L) {
-      if (L != s.layer) {
-        entangle += entanglement[s.layer][L] * layer_avg[L];
+    if (s.layer >= 0 && s.layer < 5) {
+      for (int L = 0; L < 5; ++L) {
+        if (L != s.layer) {
+          entangle += entanglement[s.layer][L] * layer_avg[L];
+        }
       }
     }
 
