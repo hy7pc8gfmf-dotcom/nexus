@@ -16,3 +16,4 @@ __pycache__/
 _build_log.txt
 _build_temp.bat
 _check_cmake.bat
+binary/.proof_index.json

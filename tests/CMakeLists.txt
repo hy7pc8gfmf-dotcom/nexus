@@ -12,6 +12,7 @@ set(NEXUS_TEST_SRC
   test_core/quantum_test.cpp
   test_core/meta_axiom_test.cpp
   test_core/integration_test.cpp
+  test_core/proof_cache_test.cpp
   test_core/seed_buffer_test.cpp
   test_daemon/state_writer_test.cpp
   test_psyche/psi_reasoner_test.cpp
@@ -22,6 +23,7 @@ set(NEXUS_TEST_SRC
   test_psyche/flow_test.cpp
   test_psyche/atlas_bridge_test.cpp
   ${CMAKE_SOURCE_DIR}/src/core/meta_axiom_engine.cpp
+  ${CMAKE_SOURCE_DIR}/src/core/proof_cache.cpp
   ${CMAKE_SOURCE_DIR}/src/core/coq_kernel.cpp
 )
 
