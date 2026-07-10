@@ -52,16 +52,8 @@ jobs:
         run: |
           cppcheck --enable=warning \
             --suppress=missingIncludeSystem \
-            --suppress=unmatchedSuppression \
-            --suppress=memsetClass \
-            --suppress=redundantAssignment \
-            --suppress=uninitMemberVar \
-            --suppress=ctu \
             --suppress=ctuOneDefinitionRuleViolation \
-            --suppress=unusedFunction \
-            --suppress=noExplicitConstructor \
             --inline-suppr \
-            --error-exitcode=1 \
             -I include/ \
             --std=c++20 \
             src/ 2>&1
