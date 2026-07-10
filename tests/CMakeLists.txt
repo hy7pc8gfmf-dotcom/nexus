@@ -21,6 +21,15 @@ add_executable(nexus_tests
   ${PROJECT_SOURCE_DIR}/src/core/thermal_governor.cpp
 )
 
+if(MSVC)
+  # thermal_governor 使用 _popen/nvidia-smi, 需要 windows.h,
+  # 在 /permissive- 下与 SAL 注解冲突
+  set_source_files_properties(
+    ${PROJECT_SOURCE_DIR}/src/core/thermal_governor.cpp
+    PROPERTIES COMPILE_FLAGS "/Zc:strictStrings-"
+  )
+endif()
+
 target_link_libraries(nexus_tests PRIVATE
   nexus_ipc
   nexus_types
