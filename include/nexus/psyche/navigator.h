@@ -97,6 +97,9 @@ private:
   double orig_power_  = 0.0;  // 初心衰减动力
   double belief_decay_= 0.0;  // 信念衰减量
 
+  /// 检查 steer 文件, 实时注入 12 标量
+  void check_steer_() noexcept;
+
   /// 检查是否达到升维条件
   auto should_ascend_() const noexcept -> bool;
 
