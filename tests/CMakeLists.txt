@@ -39,11 +39,8 @@ target_link_libraries(nexus_tests PRIVATE
   psyche_lib
   quantum_lib
   bridge_lib
+  thermal_lib
 )
-
-if(WIN32)
-  target_link_libraries(nexus_tests PRIVATE thermal_lib)
-endif()
 
 # GTest 目标名: FetchContent → gtest/gtest_main, find_package → GTest::gtest
 if(TARGET GTest::gtest)

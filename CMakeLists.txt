@@ -140,6 +140,7 @@ else()
   add_subdirectory(src/psyche)
   add_subdirectory(src/quantum)
   add_subdirectory(src/bridge)
+  add_subdirectory(src/thermal)
 endif()
 
 # ═══════════════════════════════════════════════════════════════════
