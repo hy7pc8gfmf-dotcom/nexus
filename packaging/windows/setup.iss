@@ -53,7 +53,7 @@ MinVersion=10.0
 
 [Languages]
 Name: "en"; MessagesFile: "compiler:Default.isl"
-Name: "zh"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+Name: "zh"; MessagesFile: "ChineseSimplified.isl"
 
 ; ═══════════════════════════════════════════════════════════════════
 ; 自定义消息 — 中文安装说明
