@@ -30,6 +30,7 @@ jobs:
           call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat" -arch=x64
           cmake -B build -S . -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=ON -DNEXUS_USE_VCPKG=OFF -DFETCHCONTENT_FULLY_DISCONNECTED=OFF
           cmake --build build --config Release -j
+          cmake --build build --config Release -j --target nexus_tests
           ctest --test-dir build -C Release --output-on-failure --timeout 30
 
       - name: Upload EXEs
