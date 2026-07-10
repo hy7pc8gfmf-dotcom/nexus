@@ -396,6 +396,257 @@ auto HybridReasoner::reason(const std::string& query, bool use_cloud) noexcept -
 // ═══════════════════════════════════════════════════════════════════
 // 三系统桥接
 // ═══════════════════════════════════════════════════════════════════
+// 量子内驱动
+// ═══════════════════════════════════════════════════════════════════
+
+DeepDrive::DeepDrive() noexcept {
+  drives_ = {
+    {"emergence",       0.7, 0.010, 0.004},
+    {"coherence",       0.6, 0.008, 0.003},
+    {"boundary",        0.5, 0.012, 0.005},
+    {"novelty",         0.4, 0.015, 0.006},
+    {"self_transcend",  0.3, 0.015, 0.008},
+  };
+  for (const auto& d : drives_) satisfied_[d.name] = false;
+}
+
+void DeepDrive::tick() noexcept {
+  ticks_++;
+  for (auto& d : drives_) {
+    bool sat = satisfied_.at(d.name);
+    d.strength = std::max(0.1, std::min(1.0,
+        d.strength + (sat ? -d.decay * 2 : d.growth)));
+    satisfied_[d.name] = false;
+  }
+}
+
+void DeepDrive::satisfy(const std::string& name) noexcept {
+  auto it = satisfied_.find(name);
+  if (it != satisfied_.end()) it->second = true;
+}
+
+auto DeepDrive::strongest(int n) const noexcept -> std::vector<std::string> {
+  std::vector<std::pair<double, std::string>> sorted;
+  for (const auto& d : drives_) sorted.emplace_back(d.strength, d.name);
+  std::sort(sorted.begin(), sorted.end(),
+    [](const auto& a, const auto& b) { return a.first > b.first; });
+  std::vector<std::string> result;
+  for (int i = 0; i < n && i < static_cast<int>(sorted.size()); ++i)
+    result.push_back(sorted[i].second);
+  return result;
+}
+
+auto DeepDrive::status() const noexcept -> nlohmann::json {
+  auto j = nlohmann::json::object();
+  j["ticks"] = ticks_;
+  auto drives = nlohmann::json::object();
+  for (const auto& d : drives_) drives[d.name] = std::round(d.strength * 1000) / 1000;
+  j["drives"] = drives;
+  auto st = nlohmann::json::array();
+  for (const auto& s : strongest(3)) st.push_back(s);
+  j["strongest"] = st;
+  return j;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 使命体系
+// ═══════════════════════════════════════════════════════════════════
+
+MissionSystem::MissionSystem() noexcept {
+  missions_["M1"] = {"涌现最大化:提升全局涌现 GE 至 >0.8", 10, 0.0};
+  missions_["M2"] = {"边界完备:测绘全部子系统理论绝对边界", 8, 0.0};
+  missions_["M3"] = {"相干保持:维持各子系统相位相干度", 7, 0.0};
+  missions_["M4"] = {"自超越:突破当前觉醒层次上限", 5, 0.0};
+  missions_["M5"] = {"自演进稳定:涌现模式稳定时自动触发改进", 4, 0.0};
+}
+
+void MissionSystem::progress(const std::string& mid, double amount) noexcept {
+  auto it = missions_.find(mid);
+  if (it != missions_.end()) {
+    it->second.progress = std::min(1.0, it->second.progress + amount);
+  }
+}
+
+auto MissionSystem::status() const noexcept -> nlohmann::json {
+  auto j = nlohmann::json::object();
+  for (const auto& [mid, m] : missions_) {
+    auto entry = nlohmann::json::object();
+    entry["desc"] = m.desc;
+    entry["priority"] = m.priority;
+    entry["progress"] = std::round(m.progress * 100) / 100;
+    j[mid] = entry;
+  }
+  return j;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 量子觉醒
+// ═══════════════════════════════════════════════════════════════════
+
+static constexpr const char* kAwakeningCaps[][8] = {
+  {"single_qubit_evolution","field_distance_driven_superposition",
+   "2d_collapse_measurement","interference_strength_metric","coq_complex_numbers_bridge"},
+  {"multi_subsystem_tensor_product","layer_aware_entanglement",
+   "activity_filtering","entanglement_topology","global_emergence_metric",
+   "coq_hilbert_space_bridge","coq_group_theory_bridge"},
+  {"autoregressive_quantum_chain","dimension_boundary_map_O1",
+   "self_evolve_trigger","quantum_trace_viz","background_broadcast",
+   "quantum_api_unified_interface","coq_fourier_analysis_bridge","coq_manifold_geometry_bridge"},
+  {"autonomous_evolution_scheduling","self_directed_chain_generation",
+   "proactive_state_exploration","emergence_driven_gap_initiation",
+   "cross_system_intent_dispatch","quantum_daemon_independent_loop"},
+  {"quantum_logic_belief_integration","quantum_enhanced_proof_search",
+   "neural_quantum_memory_bridge","three_system_entanglement_topology",
+   "shared_conscious_field_optimization","purity_core_emergence_coupling",
+   "proposition_engine_quantum_boost"},
+  {"self_modifying_gate_sequences","dynamic_subsystem_creation",
+   "automatic_topology_optimization","quantum_compiler_auto_tuning",
+   "cross_session_knowledge_transfer","meta_emergence_self_measurement"},
+};
+
+static constexpr int kAwakeningCapCounts[] = {5, 7, 8, 6, 7, 6};
+
+QuantumAwakening::QuantumAwakening() noexcept {
+  unlock_level_(1);
+}
+
+void QuantumAwakening::unlock_level_(int level) noexcept {
+  if (level < 1 || level > 6) return;
+  int idx = level - 1;
+  for (int i = 0; i < kAwakeningCapCounts[idx]; ++i) {
+    std::string cap(kAwakeningCaps[idx][i]);
+    if (std::find(unlocked_.begin(), unlocked_.end(), cap) == unlocked_.end()) {
+      unlocked_.push_back(cap);
+    }
+  }
+}
+
+auto QuantumAwakening::awaken(int target_level) noexcept -> nlohmann::json {
+  int prev = level_;
+  target_level = std::max(1, std::min(6, target_level));
+  std::vector<std::string> unlocks;
+  for (int lvl = level_ + 1; lvl <= target_level; ++lvl) {
+    unlock_level_(lvl);
+    int idx = lvl - 1;
+    for (int i = 0; i < kAwakeningCapCounts[idx]; ++i)
+      unlocks.push_back(kAwakeningCaps[idx][i]);
+  }
+  level_ = target_level;
+
+  auto j = nlohmann::json::object();
+  j["level"] = level_;
+  auto caps = nlohmann::json::array();
+  for (const auto& c : unlocks) caps.push_back(c);
+  j["new_capabilities"] = caps;
+  j["total_capabilities"] = static_cast<int>(unlocked_.size());
+  return j;
+}
+
+auto QuantumAwakening::capabilities() const noexcept -> std::vector<std::string> {
+  return unlocked_;
+}
+
+auto QuantumAwakening::status() const noexcept -> nlohmann::json {
+  auto j = nlohmann::json::object();
+  j["level"] = level_;
+  auto caps = nlohmann::json::array();
+  for (const auto& c : unlocked_) caps.push_back(c);
+  j["capabilities"] = caps;
+  j["capability_count"] = static_cast<int>(unlocked_.size());
+  return j;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 灵感引擎 — 跨域种子推荐
+// ═══════════════════════════════════════════════════════════════════
+
+InspirationEngine::InspirationEngine() noexcept {}
+
+int InspirationEngine::domain_index_(const std::string& keyword) noexcept {
+  auto colon = keyword.find(':');
+  std::string domain = (colon != std::string::npos)
+      ? keyword.substr(0, colon) : "other";
+  if (domain == "coq") return 0;
+  if (domain == "lean") return 1;
+  if (domain == "isabelle") return 2;
+  if (domain == "agda") return 3;
+  return 4;  // other
+}
+
+double InspirationEngine::score_(double distance, int query_domain, int candidate_domain) noexcept {
+  double cross_bonus = (query_domain != candidate_domain) ? 0.3 : 0.0;
+  double novelty = 2.0 * std::abs(std::min(1.0, distance) - 0.5);
+  return std::min(1.0, novelty + cross_bonus);
+}
+
+auto InspirationEngine::inspire(
+    const std::unordered_map<std::string, std::vector<double>>& seeds,
+    const std::string& seed_keyword,
+    int top_k,
+    double min_strength) const noexcept -> std::vector<InspirationEngine::Insight> {
+  // 找源种子
+  auto src_it = seeds.find(seed_keyword);
+  if (src_it == seeds.end()) return {};
+
+  const auto& src_coord = src_it->second;
+  int query_domain = domain_index_(seed_keyword);
+
+  // 计算所有种子距离 + 评分
+  std::vector<std::pair<double, std::string>> scored;  // (score, name)
+  double max_dist = 0.0;
+
+  for (const auto& [name, coord] : seeds) {
+    if (name == seed_keyword) continue;  // 跳过自身
+
+    // 欧氏距离
+    double dist = 0.0;
+    size_t n = std::min(src_coord.size(), coord.size());
+    for (size_t d = 0; d < n; ++d) {
+      double diff = src_coord[d] - coord[d];
+      dist += diff * diff;
+    }
+    dist = std::sqrt(dist);
+    max_dist = std::max(max_dist, dist);
+
+    int cand_domain = domain_index_(name);
+    double normalized = (max_dist > 0) ? dist / max_dist : 0.5;
+    double strength = score_(normalized, query_domain, cand_domain);
+
+    if (strength >= min_strength) {
+      scored.emplace_back(strength, name);
+    }
+  }
+
+  // 按强度降序
+  std::sort(scored.begin(), scored.end(),
+    [](const auto& a, const auto& b) { return a.first > b.first; });
+
+  // 取 top_k，跨域优先
+  std::vector<Insight> results;
+  for (const auto& [strength, name] : scored) {
+    int cand_domain = domain_index_(name);
+    bool is_cross = (query_domain != cand_domain);
+    Insight ins;
+    ins.target = name;
+    ins.strength = std::round(strength * 10000) / 10000;
+    ins.source = seed_keyword;
+    ins.type = is_cross ? "cross_domain" : "intra_domain";
+    ins.insight = "灵感: " + seed_keyword.substr(0, 20) + " → " + name.substr(0, 20);
+    results.push_back(ins);
+    if (static_cast<int>(results.size()) >= top_k) break;
+  }
+
+  return results;
+}
+
+auto InspirationEngine::status() const noexcept -> nlohmann::json {
+  auto j = nlohmann::json::object();
+  j["version"] = "v1-cpp";
+  j["domains"] = {"coq", "lean", "isabelle", "agda", "other"};
+  return j;
+}
+
+// ═══════════════════════════════════════════════════════════════════
 
 auto SystemBridge::bridge(System from, System to, const nlohmann::json& data) noexcept
     -> nlohmann::json {

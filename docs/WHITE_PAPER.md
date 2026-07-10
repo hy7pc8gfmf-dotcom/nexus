@@ -1,8 +1,8 @@
 # Nexus 神经系统架构白皮书
 
-> **版本**: v1.0-draft  
-> **日期**: 2026-07-09  
-> **状态**: 架构规划阶段，零代码实现  
+> **版本**: v1.1-draft  
+> **日期**: 2026-07-10  
+> **状态**: 核心架构落地，14 语义模块全部移植到 C++  
 
 ---
 
@@ -1106,51 +1106,89 @@ cpack --config build/CPackConfig.cmake
 
 ## 10. 开源策略
 
-### 10.1 许可证
+### 10.1 三级许可框架
 
-Apache 2.0 — 商业友好，专利授权，允许闭源衍生。
+Nexus 采用三级许可策略，不同组件适用不同许可证：
+
+```
+层级 1: 源码层 — Apache 2.0
+  ├── 所有 C++ 源码、头文件、构建脚本、测试代码
+  ├── 文档、CI 配置
+  └── 运行时数据文件 (.semantic_field.bin, .unified_seed_bank.json)
+      适用: 商业友好，专利授权，允许闭源衍生
+
+层级 2: 原始 Coq 证明 — RLA (Runtime License Agreement)
+  ├── meta_kernel_rules.dll (递归元论 29 定理)
+  ├── constructive_rules.dll (构造性逻辑规则)
+  └── 未来 Coq 提取的所有新证明
+      适用: 专有，需签署 RLA 方可商用
+      不随 Apache 2.0 源码分发
+
+层级 3: Coq 标准库提取 — LGPL / CeCILL-B / MIT
+  ├── Coq Standard Library 提取 → LGPL 2.1
+  ├── Mathematical Components 提取 → CeCILL-B
+  └── Coq Platform 提取 → MIT
+      适用: 遵循原库许可证，不属 RLA 覆盖范围
+```
+
+核心原则:
+- **Apache 2.0 代码允许任何人自由使用、修改、闭源分发**
+- **RLA 组件是运行时数据文件，不是源码** — 使用这些数据需要商业授权
+- **Coq 标准库提取遵循原库许可证** — 不由 RLA 约束
+- **CLA (Contributor License Agreement)** 确保贡献者提交的代码也纳入 Apache 2.0 保护范围，同时授权方保留重新许可权利
+
+详见仓库中的 `CLA/RLA.md` 和 `NOTICE`。
 
 ### 10.2 仓库结构
 
 ```
 nexus/
 ├── .github/
-│   ├── workflows/ci.yml          # GitHub Actions CI
+│   ├── workflows/ci.yml          # GitHub Actions CI (5 jobs)
 │   ├── workflows/release.yml     # 发布工作流
 │   └── ISSUE_TEMPLATE/           # Issue 模板
+├── CLA/
+│   ├── RLA.md                    # 运行时许可协议
+│   └── template.md               # CLA 模板
 ├── docs/                         # 文档
-├── src/                          # 源码
+│   ├── WHITE_PAPER.md            # 本白皮书
+│   ├── IPC_PROTOCOL.md           # 进程间通信协议
+│   └── ROADMAP.md                # 详细路线图
 ├── include/                      # 公共头文件
-├── tests/                        # 测试
-├── examples/                     # 使用示例
-├── third_party/                  # 第三方源码（fallback）
+│   └── nexus/
+│       ├── psyche/               # Ψ 层 (24 个类)
+│       ├── bridge/               # 桥接层
+│       ├── core/                 # 核心层
+│       ├── quantum/              # 量子层
+│       └── env/                  # 环境层
+├── src/                          # 源码 (8 个子项目)
+├── tests/                        # 测试 (164 个)
+├── packaging/                    # 部署/索引脚本
 ├── CMakeLists.txt
-├── vcpkg.json
-├── LICENSE
-├── README.md
-├── CONTRIBUTING.md
-└── CODE_OF_CONDUCT.md
+├── NOTICE                        # 三级许可声明
+├── LICENSE                       # Apache 2.0
+└── README.md
 ```
 
 ### 10.3 贡献规范
 
-- 所有代码提交必须通过 CI 测试
+- 所有代码提交必须通过 CI 测试（5 个 pipeline）
 - 新功能必须有对应的单元测试
 - 使用 Conventional Commits 格式：`feat:`, `fix:`, `docs:`, `refactor:`, `test:`
 - 代码审查要求：至少 1 位维护者 approve
+- 贡献同一并签署 CLA（贡献者许可协议）
 
 ### 10.4 发布策略
 
 ```
-v0.1.0    里程碑 1: env_checker.exe + daemon.exe
-v0.2.0    里程碑 2: core.exe (GPU 模型加载)
-v0.3.0    里程碑 3: algo.exe (算法引擎)
-v0.4.0    里程碑 4: psyche.exe (Ψ 层)
-v0.5.0    里程碑 5: bridge.exe (外部桥接)
-v0.6.0    里程碑 6: coordinator.exe (生命周期)
-v0.7.0    集成测试：完整启动链路
-v0.8.0    压力测试 + 性能优化
-v0.9.0    API 冻结 + 文档完善
+v0.1.0    里程碑 1: env_checker + daemon + IPC 协议      ✅ 已完成
+v0.2.0    里程碑 2: core (GPU 推理) + psyche (Ψ 层)      ✅ 已完成
+v0.3.0    里程碑 3: bridge (MCP/种子/能力)               ✅ 已完成
+v0.4.0    里程碑 4: 语义模块全部 C++ 移植                 ✅ 已完成
+v0.5.0    里程碑 5: algo (算法引擎池) + coord (生命周期)  🔄 进行中
+v0.6.0    集成测试：完整启动链路
+v0.7.0    压力测试 + 性能优化
+v0.8.0    API 冻结 + 文档完善
 v1.0.0    正式发布
 ```
 
@@ -1158,42 +1196,80 @@ v1.0.0    正式发布
 
 ## 11. 开发路线图
 
-### 里程碑 1：基础设施（v0.1.0）
+### 已完成 — 里程碑 1~4
 
-重点：`env_checker.exe` + `daemon.exe`
+```
+里程碑 1: 基础设施     (v0.1.0) ✅
+  ├── CMake 构建系统 (C++20, MSVC+GCC+Clang)
+  ├── vcpkg.json 依赖清单 (fmt, spdlog, nlohmann_json, GTest)
+  ├── nex us_ipc 共享库 (状态文件读写, mmap 环状缓冲区, 文件锁)
+  ├── env_checker.exe (CUDA 检测, VRAM 分析, 模型缓存校验)
+  └── daemon.exe (心跳, psi_field.mmap, 探针扫描, 意志链)
+      测试: 161 单元测试, 5-job CI 全绿
 
-**目标**：两个最稳定的组件先独立编译，验证 IPC 协议和构建系统。
+里程碑 2: 核心推理     (v0.2.0) ✅
+  ├── core.exe (GPU 推理引擎)
+  │   ├── VRAMManager (CUDA Runtime API)
+  │   ├── ModelGovernor (模型注册/常驻/自动驱逐)
+  │   ├── ExpertLoader (加载/推理/卸载/交换)
+  │   ├── BlockSwapper (17 块 GPU/CPU 交换)
+  │   ├── InferenceScheduler (单模型/合议/自适应)
+  │   ├── ExperienceEngine (经验卡缓存)
+  │   ├── CoqCompiler/ProofCache (编译+证明缓存)
+  │   └── RuntimeManager (SHA256 校验, RLA 提示)
+  └── psyche.exe (Ψ 层 24 个模块)
+      ├── Ψ-Reasoner (结构化推理, 30步)
+      ├── Ψ-Guard (3 重验证闭包)
+      ├── Ψ-Balancer (CPU/GPU 负载均衡)
+      ├── Ψ-Executor (工具执行, 文件/Shell)
+      ├── 30 Observer (推理观察者池)
+      ├── GridReasoner (推理网格)
+      ├── QuantumBridge (量子涌现桥接)
+      └── ConvergentNavigator (收敛导航)
 
-- [ ] CMake 构建系统搭建（`/CMakeLists.txt`, `vcpkg.json`）
-- [ ] `nexus_ipc` 共享库（状态文件读写、mmap 环状缓冲区、文件锁）
-- [ ] `env_checker.exe`：CUDA 检测 + VRAM 分析 + 模型缓存校验
-- [ ] `daemon.exe`：心跳 + psi_field.mmap + 探针扫描
-- [ ] IPC 协议验证：daemon 写状态，其他进程可独立读取
-- [ ] 单元测试覆盖：mmap 并发读写、文件锁竞争
+里程碑 3: 外部桥接     (v0.3.0) ✅
+  ├── bridge.exe (MCP 桥接, 种子通道, 能力注册)
+  ├── SeedBank (32K 种子注入+查询+域索引)
+  ├── Shell C 虚化桥接
+  └── WillChain (意志链引擎)
 
-### 里程碑 2：核心推理（v0.2.0）
+里程碑 4: 语义模块     (v0.4.0) ✅
+  ├── 14 个 D:/synapse 语义模块全部移植到 C++20
+  ├── 语义空间: port, expand, senses, slime
+  ├── 语义分析: cluster, tags, pos, predicates
+  ├── 语义推理: bridge (steer↔seed), pathway, flow
+  └── 自演进: self-evolve trigger + emergence monitor
+```
 
-重点：`core.exe`
+### 进行中 — 里程碑 5
 
-**目标**：GPU 模型加载和推理接口。
+```
+里程碑 5: 算法引擎池 + 生命周期  (v0.5.0) 🔄
 
-- [ ] VRAM 管理器（CUDA Runtime API 包装）
-- [ ] Qwythos-9B GGUF 加载（llama.cpp 封装或 CUDA 直接推理）
-- [ ] ExpertLoader 接口
-- [ ] BlockSwapper 实现
-- [ ] InferenceScheduler 实现
-- [ ] GPU 锁机制 + 并发安全验证
+algo.exe:
+  - [ ] 10 算法引擎注册框架 (Plugin 模式)
+  - [ ] MCMC 引擎移植
+  - [ ] 双逻辑剪枝引擎移植
+  - [ ] 辩证思维引擎移植 (DRE)
+  - [ ] alg o_engine.exe 子进程隔离
+  - [ ] recursor.exe (Coq 验证器子进程)
 
-### 里程碑 3：算法引擎（v0.3.0）
+coordinator.exe:
+  - [ ] 启动编排（按依赖顺序启动各 EXE）
+  - [ ] 健康检查轮询（10s 间隔）
+  - [ ] 崩溃自动拉起（最多 3 次/分钟）
+  - [ ] 优雅关闭（反序 SIGTERM → SIGKILL）
+  - [ ] 命令行接口 (--start/--stop/--restart/--status)
+```
 
-重点：`algo.exe`
+### 后续里程碑
 
-**目标**：10 个算法引擎全部移植到 C++。
-
-- [ ] 算法引擎注册机制（Plugin 模式）
-- [ ] 10 个算法引擎逐一移植
-- [ ] `algo_engine.exe` 子进程协议适配
-- [ ] `recursor.exe` Coq 验证器包装
+```
+v0.6.0    集成测试: 完整启动链路 (coord→env→core→psyche→bridge→algo)
+v0.7.0    压力测试: 7 EXE 并发, 崩溃恢复, VRAM 边界
+v0.8.0    API 冻结 + 文档完善
+v1.0.0    正式发布: Apache 2.0 + RLA 双轨
+```
 - [ ] 审计引擎
 
 ### 里程碑 4+：后续组件 + 集成

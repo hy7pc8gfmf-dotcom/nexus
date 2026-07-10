@@ -65,6 +65,9 @@ struct AuditReport {
 
 class AuditEngine {
 public:
+  /// 配置数据目录（必须在 run_all 前调用）
+  void configure(const std::string& data_dir) noexcept;
+
   /// 运行全部 40 条规则
   auto run_all() noexcept -> AuditReport;
 
@@ -86,6 +89,7 @@ private:
     RuleFn fn;
   };
   std::vector<Rule> rules_;
+  std::string data_dir_ = ".nexus";
 
   AuditEngine() noexcept;
   void init_default_rules_() noexcept;
