@@ -13,9 +13,8 @@
 #include <sstream>
 #include <string>
 
-#ifdef _WIN32
-#include <windows.h>
-#endif
+// _popen (MSVC) / popen (POSIX) 均在 <cstdio> 中声明
+// 不需要 #include <windows.h>
 
 namespace nexus::core {
 
