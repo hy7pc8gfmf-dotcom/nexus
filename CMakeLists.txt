@@ -27,6 +27,10 @@ if(MSVC)
   add_link_options(/LTCG)
 else()
   add_compile_options(-Wall -Wextra -Wpedantic -Wno-unused-parameter)
+  # 第三方头文件 (json.hpp) 可能有未使用变量，抑制告警
+  add_compile_options(-Wno-unused-variable)
+  # mmap reinterpret_cast 有严格别名访问，抑制告警
+  add_compile_options(-Wno-strict-aliasing)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")

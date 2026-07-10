@@ -89,7 +89,6 @@ public:
   // initializer_list 构造（支持嵌套的 {key, value} 对 或 数组元素）
   json(std::initializer_list<json> list) {
     bool is_object = true;
-    bool is_array = false;
     size_t count = 0;
 
     for (auto it = list.begin(); it != list.end() && count < 2; ++it, ++count) {
