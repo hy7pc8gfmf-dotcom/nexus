@@ -22,7 +22,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <ctime>
+#include <filesystem>
+#include <fstream>
 #include <random>
+#include <unordered_map>
 
 namespace nexus::psyche {
 
@@ -86,7 +90,70 @@ PsiNavigator::PsiNavigator(const ScalarParams& params) noexcept
   reset(params);
 }
 
+// ── Steer 文件检查 ─────────────────────────────────
+void PsiNavigator::check_steer_() noexcept {
+  // steer.json 路径
+  std::ifstream ifs(".nexus/steer.json");
+  if (!ifs.is_open()) { ifs.open("steer.json"); if (!ifs.is_open()) return; }
+
+  nlohmann::json cmd;
+  try { ifs >> cmd; } catch (...) { return; }
+  if (!cmd.is_object()) return;
+
+  // TTL 过期检查
+  double ttl = cmd.value("ttl_seconds", 0.0);
+  double ts_n = cmd.value("timestamp", 0.0);
+  if (ttl > 0 && (std::time(nullptr) - ts_n) > ttl) {
+    std::error_code ec;
+    std::filesystem::remove("steer.json", ec);
+    std::filesystem::remove(".nexus/steer.json", ec);
+    return;
+  }
+
+  // 命名预设表
+  const std::unordered_map<std::string, std::vector<double>> presets = {
+    {"default",     {1.0,100.0,0.3,3.0,0.1,1.0,0.5,0.2,0.3,0.05,2.0,0.01}},
+    {"aggressive",  {2.0,50.0,0.2,5.0,0.15,1.0,0.8,0.4,0.3,0.1,2.0,0.02}},
+    {"cautious",    {0.5,200.0,0.6,2.0,0.05,1.0,0.3,0.1,0.3,0.02,2.0,0.005}},
+    {"explore",     {2.5,60.0,0.1,5.0,0.2,0.8,0.7,0.6,0.5,0.12,3.0,0.02}},
+    {"precise",     {0.8,300.0,0.8,2.0,0.03,1.2,0.3,0.1,0.2,0.01,1.5,0.005}},
+  };
+
+  // 预设
+  auto ps = cmd.value("preset", std::string(""));
+  if (!ps.empty()) {
+    auto it = presets.find(ps);
+    if (it != presets.end() && it->second.size() >= 12) {
+      const auto& v = it->second;
+      params_.orig=v[0]; params_.belief=v[1]; params_.stability=v[2];
+      params_.goal=v[3]; params_.mission=v[4]; params_.value=v[5];
+      params_.decision=v[6]; params_.courage=v[7]; params_.faith=v[8];
+      params_.truth=v[9]; params_.verity=v[10]; params_.ult=v[11];
+    }
+  }
+
+  // 显式覆盖 (使用 value+sentinel 避免 find())
+  auto sv = [&](const char* key, double& field) {
+    double val = cmd.value(key, -9999.0);
+    if (val > -9998.0) field = val;
+  };
+  sv("orig",params_.orig); sv("belief",params_.belief);
+  sv("stability",params_.stability); sv("goal",params_.goal);
+  sv("mission",params_.mission); sv("value",params_.value);
+  sv("decision",params_.decision); sv("courage",params_.courage);
+  sv("faith",params_.faith); sv("truth",params_.truth);
+  sv("verity",params_.verity); sv("ult",params_.ult);
+
+  // 消耗: 删除 steer 文件 (一次性)
+  std::error_code ec;
+  std::filesystem::remove("steer.json", ec);
+  std::filesystem::remove(".nexus/steer.json", ec);
+}
+
 void PsiNavigator::step(double dt) noexcept {
+  // ── Steer 文件检查: 实时注入 12 标量 ──
+  check_steer_();
+
   ++state_.total_steps;
 
   // 1. 初心衰减模型: orig(t) = orig₀ * exp(-t / belief)

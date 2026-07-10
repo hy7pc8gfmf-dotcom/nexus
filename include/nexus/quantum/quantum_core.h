@@ -27,8 +27,10 @@
 
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <nlohmann/json.hpp>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "nexus/types/status.h"
@@ -217,6 +219,105 @@ class HybridReasoner {
 public:
   HybridReasoner() noexcept = default;
   auto reason(const std::string& query, bool use_cloud = false) noexcept -> std::string;
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// 量子内驱动 — 5 驱动 (emergence, coherence, boundary, novelty, self_transcend)
+// ═══════════════════════════════════════════════════════════════════
+
+class DeepDrive {
+public:
+  struct DriveState {
+    std::string name;
+    double strength = 0.5;
+    double growth   = 0.01;
+    double decay    = 0.005;
+  };
+
+  DeepDrive() noexcept;
+  void tick() noexcept;
+  void satisfy(const std::string& name) noexcept;
+  auto strongest(int n = 2) const noexcept -> std::vector<std::string>;
+  auto status() const noexcept -> nlohmann::json;
+
+private:
+  std::vector<DriveState> drives_;
+  std::map<std::string, bool> satisfied_;
+  int ticks_ = 0;
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// 使命体系 — 5 使命
+// ═══════════════════════════════════════════════════════════════════
+
+class MissionSystem {
+public:
+  MissionSystem() noexcept;
+  void progress(const std::string& mid, double amount = 0.05) noexcept;
+  auto status() const noexcept -> nlohmann::json;
+
+private:
+  struct Mission {
+    std::string desc;
+    int priority = 0;
+    double progress = 0.0;
+  };
+  std::map<std::string, Mission> missions_;
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// 量子觉醒 — L1~L6 分级觉醒
+// ═══════════════════════════════════════════════════════════════════
+
+class QuantumAwakening {
+public:
+  QuantumAwakening() noexcept;
+  auto awaken(int target_level) noexcept -> nlohmann::json;
+  auto level() const noexcept -> int { return level_; }
+  auto capabilities() const noexcept -> std::vector<std::string>;
+  auto status() const noexcept -> nlohmann::json;
+
+private:
+  int level_ = 1;
+  std::vector<std::string> unlocked_;
+  void unlock_level_(int level) noexcept;
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// 灵感引擎 — 跨域种子推荐 (Python v2 指定"待 CUDA C/C++ 实现")
+// ═══════════════════════════════════════════════════════════════════
+
+class InspirationEngine {
+public:
+  struct Insight {
+    std::string target;
+    double      strength = 0.0;
+    std::string source;
+    std::string type;      // "cross_domain" / "intra_domain"
+    std::string insight;
+  };
+
+  InspirationEngine() noexcept;
+
+  /// 灵感推荐: 给定种子关键词, 推荐跨域灵感连接
+  /// @param seeds 种子池 {名称: [14D坐标]}
+  /// @param seed_keyword 源种子
+  /// @param top_k 返回数
+  /// @param min_strength 最低强度
+  auto inspire(const std::unordered_map<std::string, std::vector<double>>& seeds,
+               const std::string& seed_keyword,
+               int top_k = 5,
+               double min_strength = 0.15) const noexcept -> std::vector<InspirationEngine::Insight>;
+
+  /// 统计
+  auto status() const noexcept -> nlohmann::json;
+
+private:
+  /// 域索引: 从种子名中提取域 (coq/lean/isabelle/agda/other)
+  static int domain_index_(const std::string& keyword) noexcept;
+
+  /// v1 评分: 跨域奖励 + 新颖性 (距离中点越远越新颖)
+  static double score_(double distance, int query_domain, int candidate_domain) noexcept;
 };
 
 // ═══════════════════════════════════════════════════════════════════

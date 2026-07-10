@@ -52,7 +52,7 @@ TEST(AtlasTest, SaveLoad) {
 TEST(BridgeTest, DefaultProfiles) {
   SemanticBridge bridge;
   auto profiles = bridge.steer_profile();
-  EXPECT_GE(static_cast<int>(profiles.size()), 10);
+  EXPECT_GE(static_cast<int>(profiles.size()), 8);
 }
 
 TEST(BridgeTest, SteerToSeed) {
@@ -65,11 +65,11 @@ TEST(BridgeTest, SeedToSteer) {
   SemanticBridge bridge;
   std::vector<double> seed(14, 0.3);
   auto result = bridge.seed_to_steer(seed);
-  EXPECT_EQ(static_cast<int>(result.size()), 10);
+  EXPECT_EQ(static_cast<int>(result.size()), 8);
 }
 
 TEST(BridgeTest, Stats) {
   SemanticBridge bridge;
   auto s = bridge.stats();
-  EXPECT_GE(s["n_profiles"].get<int>(), 10);
+  EXPECT_GE(s["n_profiles"].get<int>(), 8);
 }

@@ -27,11 +27,13 @@ add_executable(core
   coq_kernel.cpp
   meta_axiom_engine.cpp
   proof_cache.cpp
-  runtime_manager.cpp)
+  runtime_manager.cpp
+  memory_index.cpp)
 
 target_link_libraries(core PRIVATE
   nexus_ipc
   nexus_types
+  bridge_lib
   PRIVATE llama)
 
 if(NEXUS_USE_VCPKG)

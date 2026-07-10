@@ -85,6 +85,7 @@ static auto parse_args(int argc, char* argv[]) -> CliArgs {
 // ═══════════════════════════════════════════════════════════════════
 
 static auto register_all_engines(nexus::utils::Logger* logger,
+                                  const std::string& data_dir,
                                   bool run_validate) -> nexus::Status {
   auto& registry = nexus::algo::EngineRegistry::instance();
 
@@ -147,6 +148,7 @@ static auto register_all_engines(nexus::utils::Logger* logger,
 
   // 运行审计
   auto& audit = nexus::algo::AuditEngine::instance();
+  audit.configure(data_dir);
   auto audit_report = audit.run_all();
   NEXUS_LOG(logger, info, "审计: {}/{} 通过 ({} 失败)",
     audit_report.passed, audit_report.total, audit_report.failed);
@@ -244,7 +246,7 @@ auto main(int argc, char* argv[]) -> int {
   }
 
   // 2. 注册和初始化引擎
-  auto reg_status = register_all_engines(logger.get(), args.validate);
+  auto reg_status = register_all_engines(logger.get(), args.data_dir, args.validate);
   if (!reg_status.ok()) {
     NEXUS_LOG(logger, error, "引擎注册失败: {}", reg_status.to_string());
   }
