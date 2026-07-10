@@ -311,7 +311,7 @@ auto RecursorEngine::verify_theorem_(const CoqTheorem& t) noexcept
   for (size_t i = 0; i < t.premises.size() && consistent; i++) {
     for (size_t j = i + 1; j < t.premises.size() && consistent; j++) {
       if (t.premises[i].size() > 10 && t.premises[j].size() > 10 &&
-          t.premises[i][0] == '不' && t.premises[j][0] != '不') {
+          t.premises[i].find("\xe4\xb8\x8d") == 0 && t.premises[j].find("\xe4\xb8\x8d") != 0) {
         // 检查是否有明显矛盾
       }
     }
