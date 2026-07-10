@@ -13,6 +13,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          Set-Item -Path Env:PATH -Value ($Env:PATH + ";$Env:LOCALAPPDATA\Programs\Inno Setup 6")
+          choco install innosetup --no-progress -y
+
       - name: Build
         shell: cmd
         run: |
@@ -20,17 +26,14 @@ jobs:
           cmake -B build -S . -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DFETCHCONTENT_FULLY_DISCONNECTED=OFF
           cmake --build build --config Release -j
 
-      - name: Package
-        shell: pwsh
+      - name: Package (Inno Setup)
+        shell: cmd
         run: |
-          mkdir nexus-release
-          copy build\bin\Release\*.exe nexus-release\
-          copy build\bin\Release\*.dll nexus-release\ 2>$null
-          copy LICENSE nexus-release\
-          copy README.md nexus-release\
-          Compress-Archive -Path nexus-release\* -DestinationPath nexus-${{ github.ref_name }}.zip
+          set PATH=%PATH%;%LOCALAPPDATA%\Programs\Inno Setup 6
+          ISCC.exe packaging\windows\setup.iss
 
       - name: Upload Release
         uses: softprops/action-gh-release@v2
         with:
-          files: nexus-*.zip
+          files: dist/Nexus-*-Setup.exe
+          generate_release_notes: true

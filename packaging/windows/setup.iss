@@ -8,7 +8,7 @@
 ;   cmake --build build --target package
 
 #define MyAppName "Nexus"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "CherryClaw"
 #define MyAppURL "https://github.com/hy7pc8gfmf-dotcom/nexus"
 #define MyAppExeName "daemon.exe"
