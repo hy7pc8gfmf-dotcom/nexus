@@ -13,9 +13,7 @@ jobs:
       - name: Configure
         run: cmake -B build -S . -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=ON -DNEXUS_USE_VCPKG=OFF -DCMAKE_CXX_STANDARD=20
       - name: Build
-        run: cmake --build build -j $(nproc) 2>&1 | tail -30
-      - name: Build tests
-        run: cmake --build build --target nexus_tests -j $(nproc) 2>&1 | tail -30
+        run: cmake --build build -j $(nproc)
       - name: Run tests
         run: ctest --test-dir build --output-on-failure --timeout 30
 
@@ -30,7 +28,6 @@ jobs:
           call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat" -arch=x64
           cmake -B build -S . -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=ON -DNEXUS_USE_VCPKG=OFF -DFETCHCONTENT_FULLY_DISCONNECTED=OFF
           cmake --build build --config Release -j
-          cmake --build build --target nexus_tests --config Release -j
           ctest --test-dir build -C Release --output-on-failure --timeout 30
 
       - name: Upload EXEs
