@@ -25,6 +25,11 @@ if(WIN32)
     test_core/thermal_test.cpp
     ${PROJECT_SOURCE_DIR}/src/core/thermal_governor.cpp
   )
+  # thermal_governor.cpp 包含 windows.h, 在 /permissive- 下需放宽
+  set_source_files_properties(
+    ${PROJECT_SOURCE_DIR}/src/core/thermal_governor.cpp
+    PROPERTIES COMPILE_FLAGS "/Zc:strictStrings-"
+  )
 endif()
 
 add_executable(nexus_tests ${NEXUS_TEST_SRC})

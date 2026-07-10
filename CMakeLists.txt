@@ -21,7 +21,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
 # ── 编译器选项 ──
 if(MSVC)
-  add_compile_options(/W4 /utf-8 /permissive- /Zc:__cplusplus /Zc:strictStrings-)
+  add_compile_options(/W4 /utf-8 /permissive- /Zc:__cplusplus)
   add_compile_options(/wd4100)  # 'identifier' : unreferenced formal parameter
   add_compile_options(/wd4189)  # local variable is initialized but not referenced
   add_link_options(/LTCG)
