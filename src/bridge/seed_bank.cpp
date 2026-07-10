@@ -53,15 +53,18 @@ auto SeedBank::load(const std::string& path) noexcept -> Status {
   std::string load_path = path.empty() ? data_dir_ + "/seed_bank.jsonl" : path;
 
   if (!fs::exists(load_path)) {
-    // 尝试统一种子库格式
-    auto unified_path = path.empty()
-      ? data_dir_ + "/.unified_seed_bank.json"
-      : path;
-    if (fs::exists(unified_path)) {
-      return load_unified(unified_path);
-    }
     return Status::Error(ErrorCode::kFileNotFound,
       "seed bank not found: " + load_path);
+  }
+
+  // 检查文件格式: 以 '{' 开头的是统一种子库 (JSON 对象), 非 JSONL
+  {
+    std::ifstream probe(load_path);
+    char first_char = 0;
+    probe >> first_char;
+    if (first_char == '{') {
+      return load_unified(load_path);
+    }
   }
 
   seeds_.clear();

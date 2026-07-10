@@ -11,6 +11,7 @@ add_executable(nexus_tests
   test_core/mmap_ringbuf_test.cpp
   test_core/quantum_test.cpp
   test_core/meta_axiom_test.cpp
+  test_core/integration_test.cpp
   test_daemon/state_writer_test.cpp
   test_psyche/psi_reasoner_test.cpp
   test_psyche/observer_test.cpp
@@ -23,6 +24,7 @@ target_link_libraries(nexus_tests PRIVATE
   nexus_types
   psyche_lib
   quantum_lib
+  bridge_lib
 )
 
 # GTest 目标名: FetchContent → gtest/gtest_main, find_package → GTest::gtest
