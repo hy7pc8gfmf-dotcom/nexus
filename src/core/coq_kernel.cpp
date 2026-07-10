@@ -61,7 +61,9 @@ auto CoqMetaKernel::load(const std::string& dll_path) noexcept -> Status {
   HMODULE h = LoadLibraryA(dll_path.c_str());
   if (!h) {
     return Status::Error(ErrorCode::kFileNotFound,
-      "Coq DLL not found: " + dll_path);
+      "Coq DLL not found: " + dll_path + ". "
+      "This is a runtime component covered by a separate license (see CLA/RLA.md). "
+      "To obtain it, sign the Runtime License Agreement at nexus-legal@cherryclaw.dev");
   }
   dll_handle_ = h;
   return resolve_symbols_();

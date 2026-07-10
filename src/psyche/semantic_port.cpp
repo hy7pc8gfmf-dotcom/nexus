@@ -39,7 +39,9 @@ auto SemanticPort::load(const std::string& path) noexcept -> Status {
   std::ifstream ifs(path, std::ios::binary);
   if (!ifs.is_open()) {
     return Status::Error(ErrorCode::kFileNotFound,
-      "semantic field not found: " + path);
+      "semantic field not found: " + path + ". "
+      "This file is part of the Nexus runtime components. "
+      "See CLA/RLA.md for how to obtain it.");
   }
 
   // 读 HEADER

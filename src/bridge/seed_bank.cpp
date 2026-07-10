@@ -54,7 +54,9 @@ auto SeedBank::load(const std::string& path) noexcept -> Status {
 
   if (!fs::exists(load_path)) {
     return Status::Error(ErrorCode::kFileNotFound,
-      "seed bank not found: " + load_path);
+      "seed bank not found: " + load_path + ". "
+      "This file is part of the Nexus runtime components. "
+      "See CLA/RLA.md for how to obtain it.");
   }
 
   // 检查文件格式: 以 '{' 开头的是统一种子库 (JSON 对象), 非 JSONL

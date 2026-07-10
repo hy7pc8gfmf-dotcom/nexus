@@ -283,6 +283,10 @@ static int run_reasoner(const std::string& problem,
       seed_bank.count(), seed_bank.domains().size());
   } else {
     NEXUS_LOG(logger, warn, "种子库不可用: {}", seed_load.to_string());
+    std::cout << "\n⚠️  种子库和语义场文件未找到。\n"
+              << "   这些是 Nexus 运行时组件, 受单独的许可协议保护。\n"
+              << "   获取方式: 签署运行时许可协议 (CLA/RLA.md)\n"
+              << "   联系: nexus-legal@cherryclaw.dev\n\n";
   }
 
   nexus::psyche::PsiReasoner::Config cfg;
