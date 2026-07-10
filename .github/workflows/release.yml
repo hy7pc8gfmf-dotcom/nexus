@@ -28,9 +28,16 @@ jobs:
           cmake -B build -S . -DNEXUS_CUDA_SUPPORT=OFF -DNEXUS_BUILD_TESTS=OFF -DNEXUS_USE_VCPKG=OFF -DFETCHCONTENT_FULLY_DISCONNECTED=OFF
           cmake --build build --config Release -j
 
+      - name: List exes (debug)
+        shell: pwsh
+        run: Get-ChildItem build\ -Recurse -Filter "*.exe" -Depth 5 | Select FullName, Length
+
       - name: Package (Inno Setup)
         shell: cmd
         run: |
+          rem Copy EXEs to expected location for Inno Setup
+          mkdir build\bin\Release 2>nul
+          for /r build %%f in (*.exe) do copy "%%f" build\bin\Release\ >nul 2>&1
           set PATH=%PATH%;%LOCALAPPDATA%\Programs\Inno Setup 6
           ISCC.exe packaging\windows\setup.iss
         continue-on-error: false
