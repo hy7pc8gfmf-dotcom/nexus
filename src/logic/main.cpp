@@ -10,8 +10,10 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <string>
+#include <unordered_map>
 
 #include <nlohmann/json.hpp>
 
@@ -27,20 +29,69 @@ struct CliArgs {
   std::string output_path = ".nexus/logic_state.json";
   std::string data_dir   = ".nexus";
   bool oneshot = false;
+  bool import_seeds = false;
+  std::string import_source;
 };
 
 static auto parse_args(int argc, char* argv[]) -> CliArgs {
   CliArgs args;
   for (int i = 1; i < argc; ++i) {
     std::string arg(argv[i]);
-    if (arg == "--seed-bank" && i+1 < argc) args.seed_bank = argv[++i];
-    else if (arg == "--oneshot")           args.oneshot = true;
+    if (arg == "--seed-bank" && i+1 < argc)  args.seed_bank = argv[++i];
+    else if (arg == "--oneshot")            args.oneshot = true;
+    else if (arg == "--import" && i+1 < argc) { args.import_seeds = true; args.import_source = argv[++i]; }
     else if (arg == "--help" || arg == "-h") {
-      std::cout << "用法: logic.exe --seed-bank <path> [--oneshot]\n";
+      std::cout << "用法: logic.exe [--seed-bank <path>] [--oneshot] [--import <source.json>]\n";
       std::exit(0);
     }
   }
   return args;
+}
+
+// ── 种子导入 (因 json 库限制, 种子数据需在首次部署时用外部工具生成) ──
+// 参见 port_seed_bank.py (工具脚本, 不在构建链中)
+static auto import_seed_bank(const std::string& source_path,
+                              const std::string& output_dir,
+                              nexus::utils::Logger* logger) -> bool {
+  NEXUS_LOG(logger, error, "种子导入需使用 Python 工具: port_seed_bank.py");
+  NEXUS_LOG(logger, info, "请运行: python port_seed_bank.py");
+  return false;
+}
+      auto& seed = it.value();
+
+      // 找域 — 使用 domain_tag 字段
+      auto domain_tag = seed.value("domain_tag", std::string(""));
+
+      nlohmann::json record;
+      record["name"]        = name;
+      record["intensity"]   = seed.value("intensity", 0);
+      record["source"]      = seed.value("source", "");
+      record["type"]        = seed.value("type", "");
+      record["domain_tag"]  = seed.value("domain_tag", "");
+      record["step_detail"] = seed.value("step_detail", "");
+
+      ofs << record.dump() << "\n";
+      written++;
+    }
+
+    // 写索引
+    nlohmann::json idx;
+    idx["version"]     = data.value("version", 2);
+    idx["total_seeds"] = total;
+    idx["dimension"]   = dimension;
+    idx["domains"]     = nlohmann::json::array();
+
+    std::ofstream idx_ofs(output_dir + "/seed_bank_index.json");
+    idx_ofs << idx.dump(2);
+
+    NEXUS_LOG(logger, info, "种子导入完成: {} 颗, {} 域, {}D", written,
+      static_cast<int>(domain_map.size()), dimension);
+    return true;
+
+  } catch (const std::exception& e) {
+    NEXUS_LOG(logger, error, "导入失败: {}", e.what());
+    return false;
+  }
 }
 
 auto main(int argc, char* argv[]) -> int {
@@ -49,6 +100,13 @@ auto main(int argc, char* argv[]) -> int {
 
   auto logger = nexus::utils::init_logger("logic", args.data_dir + "/logs");
   NEXUS_LOG(logger, info, "logic v{} 启动", "1.0.0");
+
+  // 0. 种子导入模式 (替换 port_seed_bank.py)
+  if (args.import_seeds) {
+    fs::create_directories(args.data_dir);
+    import_seed_bank(args.import_source, args.data_dir, logger.get());
+    return 0;
+  }
 
   // 1. 加载种子空间
   nexus::logic::SeedSpace space;
