@@ -24,15 +24,19 @@
 
 #include "nexus/core/coq_kernel.h"
 
+#ifdef _WIN32
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#endif
 
 #include <algorithm>
 #include <sstream>
 
 namespace nexus::core {
 
+#ifdef _WIN32
+// Windows: 实际 DLL 加载实现
 auto CoqRuleResult::to_json() const -> nlohmann::json {
   auto j = nlohmann::json::object();
   j["rule_name"] = rule_name; j["result"] = result;
@@ -145,5 +149,27 @@ auto ConstructiveRules::check_duality(int level) noexcept -> bool {
 auto ConstructiveRules::is_loaded() const noexcept -> bool {
   return dll_handle_ != nullptr;
 }
+
+#else  // !_WIN32
+// Linux: 存根实现 (Coq DLL 仅 Windows)
+CoqMetaKernel::CoqMetaKernel() noexcept = default;
+CoqMetaKernel::~CoqMetaKernel() noexcept = default;
+auto CoqMetaKernel::load(const std::string&) noexcept -> Status {
+  return Status::Error(ErrorCode::kGpuUnavailable, "Coq DLL requires Windows");
+}
+auto CoqMetaKernel::evaluate(const std::string&) noexcept -> std::vector<CoqRuleResult> { return {}; }
+auto CoqMetaKernel::is_loaded() const noexcept -> bool { return false; }
+auto CoqMetaKernel::resolve_symbols_() noexcept -> Status {
+  return Status::Error(ErrorCode::kGpuUnavailable, "Coq DLL requires Windows");
+}
+
+ConstructiveRules::ConstructiveRules() noexcept = default;
+ConstructiveRules::~ConstructiveRules() noexcept = default;
+auto ConstructiveRules::load(const std::string&) noexcept -> Status {
+  return Status::Error(ErrorCode::kGpuUnavailable, "Coq DLL requires Windows");
+}
+auto ConstructiveRules::check_duality(int) noexcept -> bool { return false; }
+auto ConstructiveRules::is_loaded() const noexcept -> bool { return false; }
+#endif  // _WIN32
 
 }  // namespace nexus::core

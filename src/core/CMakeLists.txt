@@ -23,7 +23,9 @@ add_executable(core
   meta_kernel.cpp
   experience.cpp
   native_bridge.cpp
-  gpu_token.cpp)
+  gpu_token.cpp
+  coq_kernel.cpp
+  meta_axiom_engine.cpp)
 
 target_link_libraries(core PRIVATE
   nexus_ipc
