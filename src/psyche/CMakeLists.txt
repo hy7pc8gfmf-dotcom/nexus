@@ -9,7 +9,8 @@ add_executable(psyche
   algo_quantum.cpp
   scoreboard.cpp
   meta_axiom.cpp
-  holographic.cpp)
+  holographic.cpp
+  psi_reasoner.cpp)
 
 target_link_libraries(psyche PRIVATE nexus_ipc nexus_types)
 if(NEXUS_USE_VCPKG)
