@@ -15,9 +15,14 @@ add_executable(nexus_tests
 target_link_libraries(nexus_tests PRIVATE
   nexus_ipc
   nexus_types
-  GTest::gtest
-  GTest::gtest_main
 )
+
+# GTest 目标名: FetchContent → gtest/gtest_main, find_package → GTest::gtest
+if(TARGET GTest::gtest)
+  target_link_libraries(nexus_tests PRIVATE GTest::gtest GTest::gtest_main)
+else()
+  target_link_libraries(nexus_tests PRIVATE gtest gtest_main)
+endif()
 
 target_include_directories(nexus_tests PRIVATE
   "${CMAKE_SOURCE_DIR}/include"

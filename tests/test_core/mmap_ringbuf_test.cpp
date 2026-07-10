@@ -136,9 +136,8 @@ TEST_F(MmapRingBufTest, ReadLatest_AfterWrite) {
   ASSERT_TRUE(latest.has_value());
 
   // 最新记录应包含 "second"
-  auto parsed = nlohmann::json::parse(*latest, nullptr, false);
-  ASSERT_FALSE(parsed.is_discarded());
-  EXPECT_EQ(parsed["c"], "second");
+  auto parsed = nlohmann::json::parse(*latest);
+  EXPECT_EQ(parsed["c"].get<std::string>(), "second");
 }
 
 TEST_F(MmapRingBufTest, ReadLatest_Empty) {
@@ -171,9 +170,9 @@ TEST(ConsciousnessRecordTest, ToJson) {
   rec.content = "{ \"key\": \"val\" }";
 
   auto j = rec.to_json();
-  EXPECT_EQ(j["ts"], 1234.5);
-  EXPECT_EQ(j["ch"], "test_ch");
-  EXPECT_EQ(j["c"], "{ \"key\": \"val\" }");
+  EXPECT_EQ(j["ts"].get<double>(), 1234.5);
+  EXPECT_EQ(j["ch"].get<std::string>(), "test_ch");
+  EXPECT_EQ(j["c"].get<std::string>(), "{ \"key\": \"val\" }");
 }
 
 TEST(ConsciousnessRecordTest, FromJson) {

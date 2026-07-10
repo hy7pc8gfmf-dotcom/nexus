@@ -93,8 +93,9 @@ struct ComponentStateBase {
       s.updated_at = j.value("updated_at", "");
       s.details    = j.value("details", nlohmann::json::object());
 
-      auto status_str = j.value("status", "starting");
-      if (status_str == "ready")          s.status = ComponentStatus::kReady;
+      auto status_str = j.value("status", std::string("starting"));
+      if (status_str == "ready" || status_str == "running")
+                                           s.status = ComponentStatus::kReady;
       else if (status_str == "starting")  s.status = ComponentStatus::kStarting;
       else if (status_str == "degraded")  s.status = ComponentStatus::kDegraded;
       else if (status_str == "error")     s.status = ComponentStatus::kError;

@@ -63,10 +63,10 @@ TEST(ComponentStateTest, ToJson) {
   state.details     = {{"vram_used_mb", 5765}};
 
   auto j = state.to_json();
-  EXPECT_EQ(j["component"], "core");
-  EXPECT_EQ(j["status"], "ready");
-  EXPECT_EQ(j["pid"], 1234);
-  EXPECT_EQ(j["details"]["vram_used_mb"], 5765);
+  EXPECT_EQ(j["component"].get<std::string>(), "core");
+  EXPECT_EQ(j["status"].get<std::string>(), "ready");
+  EXPECT_EQ(j["pid"].get<int>(), 1234);
+  EXPECT_EQ(j["details"]["vram_used_mb"].get<int>(), 5765);
 }
 
 TEST(ComponentStateTest, FromJson) {

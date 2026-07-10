@@ -101,8 +101,8 @@ TEST_F(StateFileTest, Writer_ContentIsValid) {
   ASSERT_TRUE(ifs.is_open());
   nlohmann::json parsed;
   ifs >> parsed;
-  EXPECT_EQ(parsed["component"], "core");
-  EXPECT_EQ(parsed["status"], "ready");
+  EXPECT_EQ(parsed["component"].get<std::string>(), "core");
+  EXPECT_EQ(parsed["status"].get<std::string>(), "ready");
 }
 
 TEST_F(StateFileTest, Writer_Overwrite) {
@@ -118,7 +118,7 @@ TEST_F(StateFileTest, Writer_Overwrite) {
   std::ifstream ifs(test_file);
   nlohmann::json parsed;
   ifs >> parsed;
-  EXPECT_EQ(parsed["v"], 2);
+  EXPECT_EQ(parsed["v"].get<int>(), 2);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -140,7 +140,7 @@ TEST_F(StateFileTest, Reader_ReadBack) {
   StateFileReader reader(test_file.string());
   auto result = reader.read();
   ASSERT_TRUE(result.ok());
-  EXPECT_EQ(result.value()["name"], "nexus");
+  EXPECT_EQ(result.value()["name"].get<std::string>(), "nexus");
 }
 
 TEST_F(StateFileTest, Reader_FileNotExist) {

@@ -79,12 +79,12 @@ TEST_F(StateWriterTest, ToJson_BasicFields) {
   state.updated_at = "2026-07-09T18:05:00Z";
 
   auto j = state.to_json();
-  EXPECT_EQ(j["$schema"],   "nexus-state-v1");
-  EXPECT_EQ(j["version"],   "1.0");
-  EXPECT_EQ(j["component"], "daemon");
-  EXPECT_EQ(j["status"],    "ready");
-  EXPECT_EQ(j["pid"],       1234);
-  EXPECT_EQ(j["started_at"], "2026-07-09T18:00:00Z");
+  EXPECT_EQ(j["$schema"].get<std::string>(),   "nexus-state-v1");
+  EXPECT_EQ(j["version"].get<std::string>(),   "1.0");
+  EXPECT_EQ(j["component"].get<std::string>(), "daemon");
+  EXPECT_EQ(j["status"].get<std::string>(),    "ready");
+  EXPECT_EQ(j["pid"].get<int>(),       1234);
+  EXPECT_EQ(j["started_at"].get<std::string>(), "2026-07-09T18:00:00Z");
 }
 
 TEST_F(StateWriterTest, ToJson_WithDetails) {
@@ -94,8 +94,8 @@ TEST_F(StateWriterTest, ToJson_WithDetails) {
   state.details   = nlohmann::json{{"vram_used_mb", 5765}, {"loaded_models", {"qwythos_9b"}}};
 
   auto j = state.to_json();
-  EXPECT_EQ(j["details"]["vram_used_mb"], 5765);
-  EXPECT_EQ(j["details"]["loaded_models"][0], "qwythos_9b");
+  EXPECT_EQ(j["details"]["vram_used_mb"].get<int>(), 5765);
+  EXPECT_EQ(j["details"]["loaded_models"][0].get<std::string>(), "qwythos_9b");
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -145,9 +145,9 @@ TEST_F(StateWriterTest, WriteThenRead) {
   auto result = reader.read();
   ASSERT_TRUE(result.ok());
 
-  EXPECT_EQ(result.value()["component"], "daemon");
-  EXPECT_EQ(result.value()["status"], "ready");
-  EXPECT_EQ(result.value()["pid"], 999);
+  EXPECT_EQ(result.value()["component"].get<std::string>(), "daemon");
+  EXPECT_EQ(result.value()["status"].get<std::string>(), "ready");
+  EXPECT_EQ(result.value()["pid"].get<int>(), 999);
 }
 
 TEST_F(StateWriterTest, DaemonDetails_RoundTrip) {
@@ -169,10 +169,10 @@ TEST_F(StateWriterTest, DaemonDetails_RoundTrip) {
   ASSERT_TRUE(result.ok());
 
   auto d = result.value()["details"];
-  EXPECT_EQ(d["uptime_seconds"],     3600);
-  EXPECT_EQ(d["cycle"],              42);
-  EXPECT_EQ(d["psi_field_written"],  1000);
-  EXPECT_EQ(d["will_hooks_scanned"], 5);
+  EXPECT_EQ(d["uptime_seconds"].get<int>(),     3600);
+  EXPECT_EQ(d["cycle"].get<int>(),              42);
+  EXPECT_EQ(d["psi_field_written"].get<int>(),  1000);
+  EXPECT_EQ(d["will_hooks_scanned"].get<int>(), 5);
 }
 
 TEST_F(StateWriterTest, CoreDetails_RoundTrip) {
@@ -192,8 +192,8 @@ TEST_F(StateWriterTest, CoreDetails_RoundTrip) {
   ASSERT_TRUE(result.ok());
 
   auto d = result.value()["details"];
-  EXPECT_EQ(d["vram_used_mb"], 4096);
-  EXPECT_EQ(d["vram_free_mb"], 1024);
+  EXPECT_EQ(d["vram_used_mb"].get<int>(), 4096);
+  EXPECT_EQ(d["vram_free_mb"].get<int>(), 1024);
   EXPECT_EQ(d["loaded_models"].size(), 2);
 }
 
@@ -214,9 +214,9 @@ TEST_F(StateWriterTest, EnvDetails_RoundTrip) {
   ASSERT_TRUE(result.ok());
 
   auto gpu = result.value()["details"]["gpu"];
-  EXPECT_EQ(gpu["name"],          "RTX 3070");
-  EXPECT_EQ(gpu["vram_total_mb"], 8192);
-  EXPECT_EQ(gpu["vram_free_mb"],  6000);
+  EXPECT_EQ(gpu["name"].get<std::string>(),          "RTX 3070");
+  EXPECT_EQ(gpu["vram_total_mb"].get<int>(), 8192);
+  EXPECT_EQ(gpu["vram_free_mb"].get<int>(),  6000);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -239,6 +239,6 @@ TEST_F(StateWriterTest, MultipleUpdates) {
   auto result = reader.read();
   ASSERT_TRUE(result.ok());
 
-  EXPECT_EQ(result.value()["status"], "ready");
-  EXPECT_EQ(result.value()["pid"], 1004);
+  EXPECT_EQ(result.value()["status"].get<std::string>(), "ready");
+  EXPECT_EQ(result.value()["pid"].get<int>(), 1004);
 }
