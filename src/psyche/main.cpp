@@ -45,6 +45,7 @@
 #include "nexus/utils/logger.h"
 #include "nexus/psyche/navigator.h"
 #include "nexus/psyche/emergence.h"
+#include "nexus/psyche/psi_reasoner.h"
 
 namespace fs = std::filesystem;
 using namespace std::chrono_literals;
@@ -66,22 +67,29 @@ struct CliArgs {
   std::string env_path    = ".nexus/env.json";
   std::string output_path = ".nexus/psyche_state.json";
   std::string data_dir    = ".nexus";
+  std::string reason      = "";     // --reason <problem>
   bool daemon_mode = false;
   bool oneshot     = false;
-  int  n_steps     = 100;   // oneshot 时的步进数
+  int  n_steps     = 100;
 };
 
 static auto parse_args(int argc, char* argv[]) -> CliArgs {
   CliArgs args;
   for (int i = 1; i < argc; ++i) {
     std::string arg(argv[i]);
-    if (arg == "--env" && i + 1 < argc)     args.env_path = argv[++i];
+    if (arg == "--env" && i + 1 < argc)       args.env_path = argv[++i];
     else if (arg == "--output" && i+1 < argc) args.output_path = argv[++i];
-    else if (arg == "--steps" && i+1 < argc) args.n_steps = std::stoi(argv[++i]);
-    else if (arg == "--daemon")             args.daemon_mode = true;
-    else if (arg == "--oneshot")            args.oneshot = true;
+    else if (arg == "--steps" && i+1 < argc)  args.n_steps = std::stoi(argv[++i]);
+    else if (arg == "--reason" && i+1 < argc) args.reason = argv[++i];
+    else if (arg == "--daemon")               args.daemon_mode = true;
+    else if (arg == "--oneshot")              args.oneshot = true;
     else if (arg == "--help" || arg == "-h") {
-      std::cout << "用法: psyche.exe --env <path> [--daemon] [--oneshot] [--steps N]\n";
+      std::cout << "用法: psyche.exe [选项]\n"
+                << "  --env <path>      环境文件\n"
+                << "  --reason <问题>    Ψ 推理模式\n"
+                << "  --daemon          后台守护模式\n"
+                << "  --oneshot         单次执行 N 步\n"
+                << "  --steps N         步数\n";
       std::exit(0);
     }
   }
@@ -192,6 +200,91 @@ static void run_oneshot(
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// Ψ 推理模式 — 模拟推理回调 (无模型时使用)
+// ═══════════════════════════════════════════════════════════════════
+
+static auto mock_infer(const std::string& problem,
+                        const std::string& context) noexcept
+    -> nexus::Result<std::pair<std::string, double>> {
+  // 根据上下文长度生成不同的推理内容
+  auto steps = std::count(context.begin(), context.end(), '\n');
+  std::string response;
+  double confidence = 0.5 + std::min(0.4, steps * 0.05);
+
+  if (steps < 2) {
+    response = "初步分析: " + problem +
+      "\n  需要分解为多个子问题逐步推理。";
+  } else if (steps < 5) {
+    response = "中间推理: 基于上一步结论，" +
+      std::string("推导出新的推论。置信度逐步提升。");
+  } else if (steps < 10) {
+    response = "深入分析: 交叉验证多个推论，" +
+      std::string("发现一致的证据链。");
+  } else {
+    response = "综合结论: 所有证据指向一致，" +
+      std::string("推理链闭合。");
+    confidence = 0.92;
+  }
+
+  return nexus::Result<std::pair<std::string, double>>(
+    std::pair<std::string, double>(response, confidence));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Ψ 推理模式入口
+// ═══════════════════════════════════════════════════════════════════
+
+static int run_reasoner(const std::string& problem,
+                         nexus::utils::Logger* logger) {
+  NEXUS_LOG(logger, info, "Ψ 推理启动: {}", problem);
+
+  nexus::psyche::PsiReasoner::Config cfg;
+  cfg.max_steps = 15;
+  cfg.enable_observer = false;
+  cfg.enable_seeds = false;
+
+  nexus::psyche::PsiReasoner reasoner(cfg);
+  reasoner.set_infer_callback(mock_infer);
+
+  auto start = std::chrono::steady_clock::now();
+  auto result = reasoner.reason(problem, "");
+  auto elapsed = std::chrono::duration<double>(
+    std::chrono::steady_clock::now() - start).count();
+
+  if (!result.ok()) {
+    NEXUS_LOG(logger, error, "推理失败: {}", result.error().to_string());
+    return 1;
+  }
+
+  auto report = result.value();
+  std::cout << "\nΨ Reasoning Report\n"
+            << std::string(50, '=') << "\n"
+            << "问题: " << report.problem << "\n"
+            << "状态: " << (report.converged ? "✅ 收敛" : "⏳ 未收敛") << "\n"
+            << "步数: " << report.total_steps << "\n"
+            << "分支: " << report.total_branches << "\n"
+            << "修订: " << report.total_revisions << "\n"
+            << "置信度: " << std::round(report.final_confidence * 1000) / 1000 << "\n"
+            << "耗时: " << std::round(elapsed * 10) / 10 << "s\n\n";
+
+  for (const auto& s : report.steps) {
+    auto type_str = nexus::psyche::step_type_string(s.type);
+    std::cout << "  #" << s.id << " [" << type_str << "]"
+              << " 置信=" << std::round(s.confidence * 1000) / 1000;
+    if (s.branch_id > 0) std::cout << " 分支=" << s.branch_id;
+    std::cout << "\n    " << s.content.substr(0, 120) << "\n";
+  }
+
+  if (!report.conclusion.empty()) {
+    std::cout << "\n结论: " << report.conclusion.substr(0, 400) << "\n";
+  }
+
+  NEXUS_LOG(logger, info, "Ψ 推理完成: {} 步, {:.1f}s, 置信={:.3f}",
+    report.total_steps, elapsed, report.final_confidence);
+  return 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // main
 // ═══════════════════════════════════════════════════════════════════
 
@@ -204,6 +297,11 @@ auto main(int argc, char* argv[]) -> int {
 
   auto logger = nexus::utils::init_logger("psyche", args.data_dir + "/logs");
   NEXUS_LOG(logger, info, "psyche v{} 启动", "1.0.0");
+
+  // 0. Ψ 推理模式 (快速路径)
+  if (!args.reason.empty()) {
+    return run_reasoner(args.reason, logger.get());
+  }
 
   // 1. 读取 env.json
   {
