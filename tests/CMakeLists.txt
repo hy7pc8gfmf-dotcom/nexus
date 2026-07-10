@@ -5,7 +5,7 @@
 # Nexus 测试套件
 # ═══════════════════════════════════════════════════════════════════
 
-add_executable(nexus_tests ALL
+add_executable(nexus_tests
   test_env/env_checker_test.cpp
   test_core/state_file_test.cpp
   test_core/mmap_ringbuf_test.cpp
