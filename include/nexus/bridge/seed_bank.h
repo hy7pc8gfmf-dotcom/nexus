@@ -66,6 +66,12 @@ public:
   /// 从 JSON 文件加载种子库
   auto load(const std::string& path = "") noexcept -> Status;
 
+  /// 从统一种子库格式加载 (.unified_seed_bank.json)
+  auto load_unified(const std::string& path = "") noexcept -> Status;
+
+  /// 注入/更新一颗种子
+  auto inject(const SeedEntry& seed, const std::vector<std::string>& domains = {}) noexcept -> Status;
+
   /// 按域查询
   [[nodiscard]] auto query_by_domain(const std::string& domain,
                                       int limit = 50) const noexcept

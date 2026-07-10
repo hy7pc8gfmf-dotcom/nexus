@@ -53,6 +53,13 @@ auto SeedBank::load(const std::string& path) noexcept -> Status {
   std::string load_path = path.empty() ? data_dir_ + "/seed_bank.jsonl" : path;
 
   if (!fs::exists(load_path)) {
+    // 尝试统一种子库格式
+    auto unified_path = path.empty()
+      ? data_dir_ + "/.unified_seed_bank.json"
+      : path;
+    if (fs::exists(unified_path)) {
+      return load_unified(unified_path);
+    }
     return Status::Error(ErrorCode::kFileNotFound,
       "seed bank not found: " + load_path);
   }
@@ -85,7 +92,6 @@ auto SeedBank::load(const std::string& path) noexcept -> Status {
 
       seeds_[seed.name] = seed;
 
-      // 构建域索引
       auto domains = j.value("domains", std::vector<std::string>());
       for (const auto& d : domains) {
         DomainEntry de;
@@ -97,6 +103,80 @@ auto SeedBank::load(const std::string& path) noexcept -> Status {
       return Status::Error(ErrorCode::kJsonParseError,
         "line " + std::to_string(line_num) + ": " + e.what());
     }
+  }
+
+  total_ = static_cast<int>(seeds_.size());
+  return Status::Ok();
+}
+
+auto SeedBank::load_unified(const std::string& path) noexcept -> Status {
+  if (!fs::exists(path)) {
+    return Status::Error(ErrorCode::kFileNotFound,
+      "unified seed bank not found: " + path);
+  }
+
+  std::ifstream ifs(path);
+  if (!ifs.is_open()) {
+    return Status::Error(ErrorCode::kIoError,
+      "cannot open unified seed bank: " + path);
+  }
+
+  try {
+    nlohmann::json data;
+    ifs >> data;
+
+    seeds_.clear();
+    domain_index_.clear();
+
+    // 版本检查
+    int version = data.value("version", 2);
+
+    // 加载种子
+    auto seeds_json = data.value("seeds", nlohmann::json::object());
+    for (auto it = seeds_json.begin(); it != seeds_json.end(); ++it) {
+      const auto& j = it.value();
+      SeedEntry seed;
+      seed.name        = j.value("name", it.key());
+      seed.intensity   = j.value("intensity", 0);
+      seed.source      = j.value("source", "");
+      seed.type        = j.value("type", "");
+      seed.domain_tag  = j.value("domain_tag", "");
+      seed.step_detail = j.value("step_detail", "");
+      seeds_[seed.name] = seed;
+    }
+
+    // 加载域索引
+    auto domain_idx = data.value("domain_index", nlohmann::json::object());
+    for (auto it = domain_idx.begin(); it != domain_idx.end(); ++it) {
+      for (const auto& entry : it.value()) {
+        DomainEntry de;
+        de.name       = entry.value("name", "");
+        de.confidence = entry.value("confidence", 0.5);
+        de.source     = entry.value("source", "");
+        domain_index_[it.key()].push_back(de);
+      }
+    }
+
+    total_ = static_cast<int>(seeds_.size());
+    dimension_ = data.value("metadata", nlohmann::json::object())
+                   .value("dimension", 14);
+    return Status::Ok();
+
+  } catch (const std::exception& e) {
+    return Status::Error(ErrorCode::kJsonParseError,
+      "unified seed bank parse error: " + std::string(e.what()));
+  }
+}
+
+auto SeedBank::inject(const SeedEntry& seed,
+                       const std::vector<std::string>& domains) noexcept -> Status {
+  seeds_[seed.name] = seed;
+
+  for (const auto& d : domains) {
+    DomainEntry de;
+    de.name = seed.name;
+    de.confidence = 0.5;
+    domain_index_[d].push_back(de);
   }
 
   total_ = static_cast<int>(seeds_.size());
