@@ -15,6 +15,7 @@ set(NEXUS_TEST_SRC
   test_daemon/state_writer_test.cpp
   test_psyche/psi_reasoner_test.cpp
   test_psyche/observer_test.cpp
+  test_psyche/psi_guard_test.cpp
   ${CMAKE_SOURCE_DIR}/src/core/meta_axiom_engine.cpp
   ${CMAKE_SOURCE_DIR}/src/core/coq_kernel.cpp
 )
