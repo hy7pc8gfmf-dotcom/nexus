@@ -11,12 +11,12 @@ add_executable(nexus_tests
   test_core/mmap_ringbuf_test.cpp
   test_daemon/state_writer_test.cpp
   test_psyche/psi_reasoner_test.cpp
-  ${CMAKE_SOURCE_DIR}/src/psyche/psi_reasoner.cpp
 )
 
 target_link_libraries(nexus_tests PRIVATE
   nexus_ipc
   nexus_types
+  psyche_lib
 )
 
 # GTest 目标名: FetchContent → gtest/gtest_main, find_package → GTest::gtest
@@ -27,8 +27,8 @@ else()
 endif()
 
 target_include_directories(nexus_tests PRIVATE
-  "${CMAKE_SOURCE_DIR}/include"
-  "${CMAKE_SOURCE_DIR}/third_party"
+  "${CMAKE_CURRENT_LIST_DIR}/../include"
+  "${CMAKE_CURRENT_LIST_DIR}/../third_party"
 )
 
 # vcpkg 模式下额外链接 fmt/spdlog
@@ -39,6 +39,5 @@ if(NEXUS_USE_VCPKG)
   )
 endif()
 
-# 注册 CTest — 使用 add_test 而非 gtest_discover_tests
-# (避免在多配置生成器下 NOT_BUILT 问题)
+# 注册 CTest
 add_test(NAME nexus_tests COMMAND nexus_tests)

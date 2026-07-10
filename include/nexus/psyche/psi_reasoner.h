@@ -125,7 +125,7 @@ public:
     bool   enable_seeds      = true;   // 启用种子知识注入
   };
 
-  explicit PsiReasoner(Config config = {}) noexcept;
+  PsiReasoner(Config config = Config()) noexcept;
 
   /// 注册推理回调 (必需)
   void set_infer_callback(InferCallback cb) noexcept;
