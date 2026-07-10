@@ -11,6 +11,7 @@ add_executable(nexus_tests
   test_core/mmap_ringbuf_test.cpp
   test_daemon/state_writer_test.cpp
   test_psyche/psi_reasoner_test.cpp
+  test_psyche/observer_test.cpp
 )
 
 target_link_libraries(nexus_tests PRIVATE

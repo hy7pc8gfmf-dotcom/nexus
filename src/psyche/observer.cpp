@@ -189,16 +189,126 @@ auto ObserverPool::run_observer_(const ObserverDef& def,
   Observation obs;
   obs.observer_id   = def.id;
   obs.observer_name = def.name;
-  obs.confidence = 0.5 + static_cast<double>(def.id) / 60.0; // [0.5, 1.0]
-  obs.content = def.name + " 观察: " + def.focus + " 分析完成";
+  obs.confidence    = 0.7;
 
-  // 类型基于角色
+  // 获取上下文内容
+  std::string content = context.value("content", std::string(""));
+  double step_confidence = context.value("confidence", 0.5);
+
+  // 根据角色和关注领域生成有意义的观察
   switch (def.role) {
-    case ObserverRole::kAuditor:     obs.type = "audit";     obs.confidence *= 0.9; break;
-    case ObserverRole::kTagger:      obs.type = "tag";       break;
-    case ObserverRole::kCritic:      obs.type = "warning";   obs.confidence *= 0.8; break;
-    case ObserverRole::kAnalyst:     obs.type = "insight";   break;
-    case ObserverRole::kSynthesizer: obs.type = "suggestion"; break;
+    case ObserverRole::kAuditor: {
+      obs.type = "audit";
+      // 审计: 检查逻辑一致性和矛盾
+      int contradictions = 0;
+      if (content.find("但是") != std::string::npos ||
+          content.find("然而") != std::string::npos ||
+          content.find("不过") != std::string::npos) contradictions++;
+      if (content.find("可能") != std::string::npos &&
+          content.find("一定") != std::string::npos) contradictions++;
+
+      if (contradictions > 0) {
+        obs.content = def.name + " 发现 " + std::to_string(contradictions) + " 处潜在矛盾";
+        obs.confidence = 0.4;
+      } else {
+        obs.content = def.name + ": 逻辑一致性检查通过";
+        obs.confidence = std::min(0.95, step_confidence + 0.1);
+      }
+      break;
+    }
+    case ObserverRole::kTagger: {
+      obs.type = "tag";
+      // 标注: 提取关键特征
+      bool has_num = false;
+      for (char c : content) { if (c >= '0' && c <= '9') { has_num = true; break; } }
+      std::string tags;
+      if (has_num) tags += "含数值,";
+      if (content.size() > 50) tags += "长文本,";
+      if (step_confidence > 0.8) tags += "高置信,";
+      if (tags.empty()) tags = "普通";
+      obs.content = def.name + " 标注: [" + tags + "]";
+      obs.confidence = 0.7 + step_confidence * 0.2;
+      break;
+    }
+    case ObserverRole::kCritic: {
+      obs.type = "warning";
+      // 批评: 找问题
+      double penalty = 0.0;
+      std::string issue;
+
+      // 矛盾检测 (critic_contradiction 专用)
+      int contradictions = 0;
+      if (content.find("但是") != std::string::npos ||
+          content.find("然而") != std::string::npos ||
+          content.find("不过") != std::string::npos) contradictions++;
+      if (content.find("可能") != std::string::npos &&
+          content.find("一定") != std::string::npos) contradictions++;
+
+      if (contradictions > 0) {
+        issue = "检测到 " + std::to_string(contradictions) + " 处潜在矛盾";
+        penalty = 0.2;
+      } else if (content.empty()) { issue = "内容为空"; penalty = 0.3; }
+      else if (content.size() < 10) { issue = "内容过短"; penalty = 0.2; }
+      else if (content.find("不确定") != std::string::npos ||
+               content.find("可能") != std::string::npos) {
+        issue = "存在不确定性表述";
+        penalty = 0.15;
+      }
+      if (step_confidence < 0.3) {
+        issue = (issue.empty() ? "" : issue + "; ") + "置信度过低";
+        penalty = std::max(penalty, 0.25);
+      }
+
+      if (!issue.empty()) {
+        obs.content = def.name + " 发现: " + issue;
+        obs.confidence = std::max(0.3, 0.7 - penalty);
+      } else {
+        obs.content = def.name + ": 未发现问题";
+        obs.confidence = 0.85;
+      }
+      break;
+    }
+    case ObserverRole::kAnalyst: {
+      obs.type = "insight";
+      // 分析: 结构化分析
+      int word_count = 0;
+      bool in_word = false;
+      for (char c : content) {
+        if (c == ' ' || c == '\n' || c == '\t' || c == ',' || c == '，') { in_word = false; }
+        else if (!in_word) { word_count++; in_word = true; }
+      }
+      int sentences = 0;
+      for (char c : content) { if (c == '。' || c == '！' || c == '？') sentences++; }
+      if (sentences == 0 && !content.empty()) sentences = 1;
+
+      obs.content = def.name + " 分析: " + std::to_string(word_count) +
+                    " 个词, " + std::to_string(sentences) + " 句";
+      obs.confidence = 0.6 + std::min(step_confidence, 0.3);
+      break;
+    }
+    case ObserverRole::kSynthesizer: {
+      obs.type = "suggestion";
+      // 综合: 给出建议
+      std::string suggestion;
+      if (step_confidence < 0.5) {
+        suggestion = "建议提升置信度后再做结论";
+        obs.confidence = 0.5;
+      } else if (step_confidence < 0.8) {
+        suggestion = "部分可信, 建议交叉验证";
+        obs.confidence = 0.65;
+      } else {
+        suggestion = "高置信度, 可直接纳入推理链";
+        obs.confidence = 0.9;
+      }
+      obs.content = def.name + ": " + suggestion;
+      break;
+    }
+  }
+
+  // 根据关注领域微调
+  if (!def.focus.empty()) {
+    bool focus_match = content.find(def.focus) != std::string::npos;
+    if (focus_match) obs.confidence = std::min(1.0, obs.confidence + 0.05);
   }
 
   return obs;
