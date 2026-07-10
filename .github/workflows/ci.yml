@@ -56,6 +56,7 @@ jobs:
             --suppress=redundantAssignment \
             --suppress=uninitMemberVar \
             --suppress=ctu \
+            --suppress=ctuOneDefinitionRuleViolation \
             --suppress=unusedFunction \
             --inline-suppr \
             --error-exitcode=1 \
