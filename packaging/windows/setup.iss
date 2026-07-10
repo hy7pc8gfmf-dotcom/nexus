@@ -42,7 +42,7 @@ DiskSpanning=no
 
 ; ── 界面 ──
 WizardStyle=modern
-WizardSmallImageFile=logo_small.bmp
+; WizardSmallImageFile=logo_small.bmp  ; 可选: 自定义左侧图片
 DisableProgramGroupPage=no
 DisableDirPage=no
 UninstallDisplayIcon={app}\bin\{#MyAppExeName}
