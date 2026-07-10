@@ -149,9 +149,10 @@ auto InferenceScheduler::infer_consensus(const std::string& prompt,
     -> Result<ScheduleResult> {
   // 选择参与合议的模型
   std::vector<const ModelSlot*> participants;
+  std::vector<ModelSlot> sorted;  // 保持生命周期与 participants 一致
   if (model_ids.empty()) {
     // 默认: 取优先级最高的 2 个模型
-    auto sorted = models_;
+    sorted = models_;
     std::sort(sorted.begin(), sorted.end(),
       [](const ModelSlot& a, const ModelSlot& b) { return a.priority < b.priority; });
     int n = std::min(2, static_cast<int>(sorted.size()));

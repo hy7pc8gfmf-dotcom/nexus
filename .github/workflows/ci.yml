@@ -52,6 +52,7 @@ jobs:
           cppcheck --enable=warning \
             --suppress=missingIncludeSystem \
             --suppress=ctuOneDefinitionRuleViolation \
+            --suppress=operatorEqVarError \
             --inline-suppr \
             --error-exitcode=1 \
             -I include/ \

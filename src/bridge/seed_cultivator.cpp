@@ -77,6 +77,8 @@ auto SeedCultivator::cultivate_cycle() noexcept -> nlohmann::json {
   auto result = nlohmann::json::object();
   int grew = 0, fissioned = 0, pruned = 0;
 
+  // 裂变: 成熟种子 + 强度≥8 → 分裂出子种子
+  std::vector<CultivableSeed> new_seeds;
   for (auto& seed : seeds_) {
     if (seed.stage == SeedStage::kPruned) continue;
 
@@ -105,7 +107,7 @@ auto SeedCultivator::cultivate_cycle() noexcept -> nlohmann::json {
       child.created_at = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
 
-      seeds_.push_back(child);
+      new_seeds.push_back(child);
       seed.fission_count++;
       fissioned++;
     }
@@ -119,6 +121,9 @@ auto SeedCultivator::cultivate_cycle() noexcept -> nlohmann::json {
       pruned++;
     }
   }
+
+  // 将裂变产生的新种子追加到容器（不能在迭代中 push_back）
+  seeds_.insert(seeds_.end(), new_seeds.begin(), new_seeds.end());
 
   save_();
 
