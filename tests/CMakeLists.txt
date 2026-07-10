@@ -27,8 +27,8 @@ else()
 endif()
 
 target_include_directories(nexus_tests PRIVATE
-  "${CMAKE_CURRENT_LIST_DIR}/../include"
-  "${CMAKE_CURRENT_LIST_DIR}/../third_party"
+  "${PROJECT_SOURCE_DIR}/include"
+  "${PROJECT_SOURCE_DIR}/third_party"
 )
 
 # vcpkg 模式下额外链接 fmt/spdlog

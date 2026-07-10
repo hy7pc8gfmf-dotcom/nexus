@@ -47,6 +47,7 @@
 #include "nexus/psyche/emergence.h"
 #include "nexus/psyche/observer.h"
 #include "nexus/psyche/psi_reasoner.h"
+#include "nexus/bridge/seed_bank.h"
 
 namespace fs = std::filesystem;
 using namespace std::chrono_literals;
@@ -274,15 +275,51 @@ static int run_reasoner(const std::string& problem,
                          nexus::utils::Logger* logger) {
   NEXUS_LOG(logger, info, "Ψ 推理启动: {}", problem);
 
+  // 加载种子库 (可选)
+  nexus::bridge::SeedBank seed_bank(".nexus");
+  auto seed_load = seed_bank.load("D:/synapse/logic_solve_engine/.unified_seed_bank.json");
+  if (seed_load.ok()) {
+    NEXUS_LOG(logger, info, "种子库已加载: {} 种子, {} 域",
+      seed_bank.count(), seed_bank.domains().size());
+  } else {
+    NEXUS_LOG(logger, warn, "种子库不可用: {}", seed_load.error().to_string());
+  }
+
   nexus::psyche::PsiReasoner::Config cfg;
   cfg.max_steps = 15;
   cfg.enable_observer = (observers != nullptr);
-  cfg.enable_seeds = false;
+  cfg.enable_seeds = seed_load.ok();
 
   nexus::psyche::PsiReasoner reasoner(cfg);
   reasoner.set_infer_callback(mock_infer);
   if (observers) {
     reasoner.set_verify_callback(make_verify_callback(observers));
+  }
+
+  // 种子查询回调
+  if (seed_load.ok()) {
+    reasoner.set_seed_callback(
+      [&seed_bank](const std::string& domain,
+                    const std::string& query)
+          -> std::vector<std::string> {
+        std::vector<std::string> results;
+
+        // 按域查询
+        auto domain_results = seed_bank.query_by_domain(domain, 5);
+        for (const auto& s : domain_results) {
+          results.push_back(s.name + " (强度:" + std::to_string(s.intensity) + ")");
+        }
+
+        // 补充关键词搜索
+        if (static_cast<int>(results.size()) < 3) {
+          auto search_results = seed_bank.search(query, 5);
+          for (const auto& s : search_results) {
+            results.push_back(s.name + " (强度:" + std::to_string(s.intensity) + ")");
+          }
+        }
+
+        return results;
+      });
   }
 
   auto start = std::chrono::steady_clock::now();
