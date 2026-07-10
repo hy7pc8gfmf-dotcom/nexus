@@ -13,7 +13,8 @@ add_library(psyche_lib STATIC
   semantic_atlas.cpp
   semantic_bridge.cpp
   semantic_senses.cpp
-  semantic_slime.cpp)
+  semantic_slime.cpp
+  semantic_expand.cpp)
 
 target_link_libraries(psyche_lib PUBLIC nexus_ipc nexus_types)
 target_include_directories(psyche_lib PUBLIC "${PROJECT_SOURCE_DIR}/include")
