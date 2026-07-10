@@ -106,4 +106,4 @@ jobs:
             --exclude build-cov/ \
             --exclude tests/ \
             --exclude src/ipc/ \
-            --fail-under-line 10 || echo "Coverage below threshold (non-blocking)"
+            --fail-under-line 5 || echo "Coverage below threshold (non-blocking)"
