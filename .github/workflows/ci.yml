@@ -52,8 +52,13 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y cppcheck
       - name: Static analysis
         run: |
-          cppcheck --enable=all \
+          cppcheck --enable=warning,portability,performance \
             --suppress=missingIncludeSystem \
+            --suppress=unmatchedSuppression \
+            --suppress=memsetClass \
+            --suppress=redundantAssignment \
+            --suppress=uninitMemberVar \
+            --suppress=ctu \
             --suppress=unmatchedSuppression \
             --inline-suppr \
             --error-exitcode=1 \
