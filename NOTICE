@@ -1,15 +1,51 @@
 Nexus — AGI Nervous System
 Copyright 2026 CherryClaw & Contributors
+Licensed under Apache License, Version 2.0 (see LICENSE)
 
-This product includes software developed by:
-- The llama.cpp project (https://github.com/ggerganov/llama.cpp) - MIT License
-- The NLohmann JSON project (https://github.com/nlohmann/json) - MIT License
-- The fmt library (https://github.com/fmtlib/fmt) - MIT License
-- The spdlog library (https://github.com/gabime/spdlog) - MIT License
+==========================================================================
+THIRD-PARTY DEPENDENCIES
+==========================================================================
 
-Portions of this software are derived from Coq proof extraction:
-- D:/synapse/meta_kernel_rules.c — Recursor Theory (Coq verified)
-- D:/synapse/constructive_rules.c — Constructive Logic (Coq extracted)
-- D:/synapse/proofs/AuditFramework.v — Audit Framework (Coq formal proof)
+This product includes or links to the following third-party software:
 
-See LICENSE for full terms.
+1. llama.cpp (MIT License)
+   - Integrated via CMake FetchContent at build time
+   - https://github.com/ggerganov/llama.cpp
+   - Used for: CPU/GPU model inference in core.exe
+   - NOT distributed as part of the Nexus source repository
+
+2. nlohmann/json (MIT License) — OPTIONAL
+   - When NEXUS_USE_VCPKG=ON: uses the official nlohmann/json library
+   - When NEXUS_USE_VCPKG=OFF: uses a minimal header-only replacement
+     in third_party/nlohmann/json.hpp (original API design by Niels Lohmann)
+   - https://github.com/nlohmann/json
+
+3. fmtlib/fmt (MIT License) — OPTIONAL
+   - Only linked when NEXUS_USE_VCPKG=ON
+   - https://github.com/fmtlib/fmt
+
+4. spdlog (MIT License) — OPTIONAL
+   - Only linked when NEXUS_USE_VCPKG=ON
+   - https://github.com/gabime/spdlog
+
+==========================================================================
+RUNTIME DEPENDENCIES (NOT DISTRIBUTED)
+==========================================================================
+
+Nexus can optionally load Coq-verified runtime modules at startup.
+These modules are NOT part of the Nexus distribution:
+
+- meta_kernel_rules.dll — 5 meta rules (Coq verified via Recursor Theory)
+- constructive_rules.dll — Constructive logic rules (Coq extracted)
+  Underlying Coq proofs reside in the user's existing D:/synapse/ installation.
+
+These DLLs are loaded dynamically at runtime if present.
+Nexus runs without them (degraded mode).
+
+==========================================================================
+ADDITIONAL ATTRIBUTIONS
+==========================================================================
+
+Portions of this software were inspired by or derived from:
+- Recursor Theory: Gödel/Löb/Tarski formal proofs (Coq)
+- Audit Framework: Coq formal proof of audit soundness
