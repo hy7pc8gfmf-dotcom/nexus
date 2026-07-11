@@ -216,20 +216,7 @@ begin
   Result := PathCheckPage.Values[0];
 end;
 
-{ 安装前检查 — 确保构建产物存在 }
-function PrepareToInstall(var NeedsRestart: Boolean): String;
-var
-  ExePath: String;
-begin
-  ExePath := ExpandConstant('{app}\bin\daemon.exe');
-  if not FileExists(ExePath) then
-  begin
-    Result := 'Warning: Could not verify build artifacts.'#13#10 +
-              'The installer may be incomplete.'#13#10#13#10 +
-              'Please ensure you have built Nexus first:'#13#10 +
-              '  cmake --build build --config Release';
-  end;
-end;
+{ 安装前检查 — 已由 ISCC 编译时验证，此处无需重复检查 }
 
 { 安装后自动打开 README 的提示 }
 procedure CurStepChanged(CurStep: TSetupStep);
