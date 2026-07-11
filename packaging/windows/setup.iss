@@ -85,6 +85,16 @@ Source: "..\..\build\bin\Release\quantum.exe";        DestDir: "{app}\bin"; Flag
 Source: "..\..\build\bin\Release\logic.exe";          DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "..\..\build\bin\Release\holographic.exe";    DestDir: "{app}\bin"; Flags: ignoreversion
 
+; ── 语义数据库 & 知识图谱 (核心数据) ──
+Source: "..\..\binary\.shell_d_semantic.mdb";  DestDir: "{app}\data"; Flags: ignoreversion
+Source: "..\..\binary\.shell_d_seeds.json";    DestDir: "{app}\data"; Flags: ignoreversion
+Source: "..\..\binary\.semantic_field.bin";    DestDir: "{app}\data"; Flags: ignoreversion
+Source: "..\..\binary\.proof_index.json";      DestDir: "{app}\data"; Flags: ignoreversion
+Source: "..\..\binary\.theorem_deps.json";     DestDir: "{app}\data"; Flags: ignoreversion
+Source: "..\..\binary\lemma_seed_index.json";  DestDir: "{app}\data"; Flags: ignoreversion
+Source: "..\..\binary\.unified_seed_bank.json"; DestDir: "{app}\data"; Flags: ignoreversion
+Source: "..\..\binary\.engine_state.json";     DestDir: "{app}\data"; Flags: ignoreversion; Check: FileExists(ExpandConstant('..\..\binary\.engine_state.json'))
+
 ; ── 文档 ──
 Source: "..\..\README.md";     DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\LICENSE";       DestDir: "{app}"; Flags: ignoreversion
@@ -93,7 +103,6 @@ Source: "..\..\CHANGELOG.md";  DestDir: "{app}"; Flags: ignoreversion
 
 ; ── CUDA 运行时 (可选组件) ──
 ; 注意: cublas64_12.dll, cudart64_12.dll 等需要从 CUDA Toolkit 安装目录获取
-; 此处为占位，实际打包时需要确保 CUDA DLLs 存在
 ; Source: "redist\cuda\*.dll"; DestDir: "{app}\bin"; Flags: ignoreversion; Components: cuda
 
 [Components]
