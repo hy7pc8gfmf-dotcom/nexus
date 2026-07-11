@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(nexus VERSION 1.1.0 LANGUAGES CXX)
+project(nexus VERSION 1.1.1 LANGUAGES CXX)
 
 # ═══════════════════════════════════════════════════════════════════
 # Nexus 神经系统 — CMake 构建系统
